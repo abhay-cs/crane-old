@@ -40,6 +40,9 @@ final class OverlayController {
     /// when Esc is handled at the panel level instead of SwiftUI.
     private(set) var inputResetToken = UUID()
 
+    /// When set, `HistoryView` pre-fills the search field (e.g. from a tag chip).
+    var historySearchQuery: String?
+
     /// Frontmost app name captured before the overlay takes key focus.
     private(set) var capturedSourceApp: String?
 
@@ -101,6 +104,7 @@ final class OverlayController {
             currentView = .input
         }
         scrollToDropID = nil
+        historySearchQuery = nil
         positionOnActiveScreen()
         // orderFrontRegardless avoids needing app activation, since we run
         // as an Accessory app (no Dock icon).
@@ -109,10 +113,12 @@ final class OverlayController {
     }
 
     /// Show the history list, optionally scrolling to a specific drop.
-    func openHistory(focusing dropID: UUID? = nil) {
+    func openHistory(focusing dropID: UUID? = nil, search: String? = nil) {
         cancelAfterSaveDismiss()
         captureSourceApp()
         scrollToDropID = dropID
+        historySearchQuery = search?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if historySearchQuery?.isEmpty == true { historySearchQuery = nil }
         if currentView != .history {
             currentView = .history
         }
@@ -124,6 +130,7 @@ final class OverlayController {
     func hide() {
         cancelAfterSaveDismiss()
         scrollToDropID = nil
+        historySearchQuery = nil
         capturedSourceApp = nil
         inputResetToken = UUID()
         panel.orderOut(nil)

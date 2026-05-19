@@ -34,14 +34,9 @@ struct DashboardView: View {
 
             activitySection
 
-            typeBreakdownSection
-
-            // ─── Reserved slot for AI-dependent cards ──────────────────
-            //  Top Tags chips (from LLM-extracted tags) and the AI Daily
-            //  Digest card will land here once speech-to-text + summaries
-            //  ship. Layout is intentionally left empty so those can drop
-            //  in without disturbing the rest of the dashboard.
-            // ───────────────────────────────────────────────────────────
+            TopTagsSection(drops: drops) { tag in
+                openOverlayHistory(search: tag)
+            }
 
             recentSection
 
@@ -95,18 +90,11 @@ struct DashboardView: View {
     // MARK: Activity
 
     private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let breakdown = drops.typeBreakdown
+        return VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Activity", trailing: "14 days")
             ActivityChart(points: drops.dailyCounts(days: 14))
                 .frame(height: 56)
-        }
-    }
-
-    // MARK: Type breakdown
-
-    private var typeBreakdownSection: some View {
-        let breakdown = drops.typeBreakdown
-        return VStack(alignment: .leading, spacing: 8) {
             TypeBreakdownBar(thoughts: breakdown.thoughts, links: breakdown.links)
                 .frame(height: 6)
             HStack(spacing: 10) {
@@ -131,10 +119,10 @@ struct DashboardView: View {
             sectionHeader("Recent")
             let items = Array(drops.prefix(3))
             if items.isEmpty {
-                Text("No drops yet. Press ⌘⇧Space to capture one.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-                    .padding(.vertical, 6)
+                EmptyStateView(
+                    message: "No drops yet. Capture a thought or link to see it here.",
+                    primaryAction: { AppDelegate.shared?.showOverlay() }
+                )
             } else {
                 VStack(spacing: 2) {
                     ForEach(items) { drop in
@@ -189,8 +177,8 @@ struct DashboardView: View {
         }
     }
 
-    private func openOverlayHistory(focusing dropID: UUID?) {
-        AppDelegate.shared?.showOverlayHistory(focusing: dropID)
+    private func openOverlayHistory(focusing dropID: UUID? = nil, search: String? = nil) {
+        AppDelegate.shared?.showOverlayHistory(focusing: dropID, search: search)
     }
 }
 
@@ -215,10 +203,14 @@ private struct StatCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .glassEffect(
-            .regular.tint(Color.accentColor.opacity(0.06)),
-            in: .rect(cornerRadius: 16, style: .continuous)
-        )
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.accentColor.opacity(0.06))
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.regularMaterial)
+                }
+        }
         .specularBorder(cornerRadius: 16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label), \(value)")

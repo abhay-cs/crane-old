@@ -24,14 +24,17 @@ struct HistoryView: View {
     private var drops: [Drop]
 
     @State private var search: String = ""
+    @State private var debouncedSearch: String = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
 
     private var filtered: [Drop] {
-        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        let q = debouncedSearch.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return drops }
         return drops.filter { drop in
             drop.text.lowercased().contains(q)
                 || drop.dropType.rawValue.lowercased().contains(q)
+                || drop.tags.contains { $0.lowercased().contains(q) }
         }
     }
 
@@ -62,7 +65,24 @@ struct HistoryView: View {
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
         )
-        .onAppear { searchFocused = true }
+        .onAppear {
+            if let seed = controller.historySearchQuery, !seed.isEmpty {
+                search = seed
+                debouncedSearch = seed
+            }
+            searchFocused = true
+        }
+        .onChange(of: search) { _, newValue in
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = newValue
+            }
+        }
+        .onDisappear {
+            searchDebounceTask?.cancel()
+        }
     }
 
     // MARK: Header
@@ -111,6 +131,8 @@ struct HistoryView: View {
                 .focused($searchFocused)
                 .font(.system(size: 13))
                 .disableAutocorrection(true)
+                .accessibilityLabel("Search drops")
+                .accessibilityHint("Filters by text, type, or tags")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -126,6 +148,14 @@ struct HistoryView: View {
         )
         .padding(.horizontal, 18)
         .padding(.bottom, 12)
+        .background {
+            Button("Focus search") { searchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+                .allowsHitTesting(false)
+        }
     }
 
     // MARK: List
@@ -136,13 +166,24 @@ struct HistoryView: View {
         if items.isEmpty {
             VStack {
                 Spacer()
-                Text(drops.isEmpty
-                     ? "No drops yet. Press ⌘⇧Space to capture your first thought!"
-                     : "No drops match your search.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.tertiary)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 36)
+                if drops.isEmpty {
+                    EmptyStateView(
+                        message: "No drops yet. Capture a thought or link to get started.",
+                        primaryAction: { AppDelegate.shared?.showOverlay() }
+                    )
+                    .padding(.horizontal, 24)
+                } else {
+                    EmptyStateView(
+                        message: "No drops match your search.",
+                        primaryTitle: "Clear search",
+                        primaryAction: {
+                            searchDebounceTask?.cancel()
+                            search = ""
+                            debouncedSearch = ""
+                        }
+                    )
+                    .padding(.horizontal, 24)
+                }
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

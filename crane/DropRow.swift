@@ -26,6 +26,14 @@ struct DropRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 textBody
+                if !drop.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(drop.tags.prefix(3), id: \.self) { tag in
+                            TagChip(label: tag, style: .compact)
+                        }
+                    }
+                    .padding(.top, 2)
+                }
                 HStack(spacing: 6) {
                     Text(relativeTime(drop.timestamp))
                     if let app = drop.sourceApp, !app.isEmpty {
@@ -33,7 +41,7 @@ struct DropRow: View {
                         Text(app)
                     }
                 }
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
             }
@@ -49,7 +57,7 @@ struct DropRow: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .opacity(hovering ? 1 : 0)
+            .opacity(hovering ? 1 : 0.45)
             .help("Delete drop")
             .accessibilityLabel("Delete drop")
             .confirmationDialog(
@@ -70,11 +78,12 @@ struct DropRow: View {
             // Gives the row a gentle, lit feel rather than the flat
             // quaternary fill it used before.
             if hovering {
-                Color.clear
-                    .glassEffect(
-                        .regular.tint(Color.accentColor.opacity(0.08)),
-                        in: .rect(cornerRadius: 8, style: .continuous)
-                    )
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.08))
+                    .background {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
             }
         }
         .contentShape(Rectangle())

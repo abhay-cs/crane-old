@@ -25,7 +25,18 @@ enum Persistence {
     /// fallback is in use (drops are lost on quit).
     static private(set) var isEphemeralStore = false
 
+    /// Human-readable store location for support / alert copy.
+    static var storeDirectoryPath: String {
+        applicationSupportDirectory().path(percentEncoded: false)
+    }
+
     // MARK: - Container
+
+    private static func openDiskContainer(config: ModelConfiguration) throws -> ModelContainer {
+        // Additive schema changes (new optional/defaulted fields) migrate
+        // automatically; an explicit plan is only needed for custom stages.
+        try ModelContainer(for: Drop.self, configurations: config)
+    }
 
     private static func makeContainer() -> ModelContainer {
         let storeURL = applicationSupportDirectory()
@@ -33,14 +44,24 @@ enum Persistence {
         let config = ModelConfiguration(url: storeURL)
 
         do {
-            let container = try ModelContainer(
-                for: Drop.self,
-                migrationPlan: CraneMigrationPlan.self,
-                configurations: config
-            )
+            let container = try openDiskContainer(config: config)
             migrateLegacyJSONIfNeeded(into: container.mainContext)
             return container
         } catch {
+            let storeError = error
+            #if DEBUG
+            print("crane: failed to open SwiftData store at \(storeURL.path): \(storeError)")
+            #endif
+
+            if let recovered = attemptStoreRecovery(
+                storeURL: storeURL,
+                config: config,
+                originalError: storeError
+            ) {
+                migrateLegacyJSONIfNeeded(into: recovered.mainContext)
+                return recovered
+            }
+
             // If the on-disk store is corrupt or unreadable, fall back to
             // an in-memory container so the app still launches. The user's
             // legacy `drops.json` (if any) is left in place so a later
@@ -48,11 +69,34 @@ enum Persistence {
             isEphemeralStore = true
             let memory = ModelConfiguration(isStoredInMemoryOnly: true)
             // swiftlint:disable:next force_try
-            return try! ModelContainer(
-                for: Drop.self,
-                migrationPlan: CraneMigrationPlan.self,
-                configurations: memory
-            )
+            let ephemeral = try! ModelContainer(for: Drop.self, configurations: memory)
+            migrateLegacyJSONIfNeeded(into: ephemeral.mainContext)
+            return ephemeral
+        }
+    }
+
+    /// Deletes a broken on-disk store (and SQLite sidecars) and retries once.
+    private static func attemptStoreRecovery(
+        storeURL: URL,
+        config: ModelConfiguration,
+        originalError: Error
+    ) -> ModelContainer? {
+        #if DEBUG
+        print("crane: attempting store recovery after: \(originalError)")
+        #endif
+
+        removeStoreFiles(at: storeURL)
+
+        return try? openDiskContainer(config: config)
+    }
+
+    private static func removeStoreFiles(at storeURL: URL) {
+        let fm = FileManager.default
+        let sidecars = ["", "-shm", "-wal"].map { suffix in
+            URL(fileURLWithPath: storeURL.path(percentEncoded: false) + suffix)
+        }
+        for url in sidecars {
+            try? fm.removeItem(at: url)
         }
     }
 

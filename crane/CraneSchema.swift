@@ -6,6 +6,11 @@
 //  the initial ship model; add CraneSchemaV2 + a MigrationStage before
 //  changing `Drop` in production.
 //
+//  Note: adding optional attributes (e.g. `tags`, `aiProcessedAt`) with
+//  inline defaults is handled by SwiftData automatically — do not register
+//  a second VersionedSchema for the same `@Model` type or the container
+//  crashes with "Duplicate version checksums detected."
+//
 
 import SwiftData
 

@@ -67,6 +67,7 @@ private struct DropInputBar: View {
     @State private var linkMode: Bool = false
     @State private var saving: Bool = false
     @State private var justSaved: Bool = false
+    @State private var linkError: String?
     @FocusState private var inputFocused: Bool
 
     private var leadingSymbol: String {
@@ -114,7 +115,11 @@ private struct DropInputBar: View {
                         .transition(.scale.combined(with: .opacity))
                 }
 
-                HintChips(linkMode: linkMode)
+                if let linkError {
+                    LinkValidationHint(message: linkError)
+                } else {
+                    HintChips(linkMode: linkMode)
+                }
             }
             .padding(.horizontal, 22)
             .frame(height: 64)
@@ -147,6 +152,9 @@ private struct DropInputBar: View {
         }
         .animation(.craneSnappy, value: linkMode)
         .animation(.craneSnappy, value: justSaved)
+        .animation(.craneSnappy, value: linkError != nil)
+        .onChange(of: text) { _, _ in linkError = nil }
+        .onChange(of: linkMode) { _, _ in linkError = nil }
     }
 
     @ViewBuilder
@@ -175,7 +183,7 @@ private struct DropInputBar: View {
         let body: String
         if linkMode {
             guard Drop.isValidLinkText(trimmed) else {
-                CraneAlert.presentInvalidLink()
+                linkError = "Enter a URL like https://example.com, or press ⌘L for thought mode."
                 return
             }
             body = Drop.normalizedLinkText(trimmed)
@@ -199,6 +207,8 @@ private struct DropInputBar: View {
             return
         }
 
+        AIJobQueue.shared.enqueue(dropID: drop.id)
+
         // Brief checkmark blip in the leading-icon slot, then hide. The
         // 250 ms delay lets the symbol replace + bounce play before the
         // panel disappears.
@@ -216,6 +226,28 @@ private struct DropInputBar: View {
         linkMode = false
         saving = false
         justSaved = false
+        linkError = nil
+    }
+}
+
+// MARK: - Inline link validation
+
+private struct LinkValidationHint: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+            Text(message)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(.orange)
+        .frame(maxWidth: 200, alignment: .leading)
+        .accessibilityLabel(message)
     }
 }
 
@@ -248,7 +280,7 @@ private struct HintChips: View {
             Text("history")
                 .foregroundStyle(.tertiary)
         }
-        .font(.system(size: 11, weight: .regular))
+        .font(.system(size: 12, weight: .regular))
         .lineLimit(1)
         .fixedSize()
     }

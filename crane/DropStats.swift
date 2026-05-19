@@ -81,4 +81,33 @@ extension Array where Element == Drop {
         }
         return (thoughts, links)
     }
+
+    /// Drops still waiting for FM tag extraction.
+    var untaggedCount: Int {
+        reduce(into: 0) { count, drop in
+            if drop.aiProcessedAt == nil { count += 1 }
+        }
+    }
+
+    /// Most frequent FM tags across all drops, for the dashboard chip row.
+    func topTags(limit: Int) -> [(tag: String, count: Int)] {
+        guard limit > 0 else { return [] }
+
+        var counts: [String: Int] = [:]
+        for drop in self {
+            for tag in drop.tags {
+                let key = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                guard !key.isEmpty else { continue }
+                counts[key, default: 0] += 1
+            }
+        }
+
+        return counts
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key < rhs.key
+            }
+            .prefix(limit)
+            .map { (tag: $0.key, count: $0.value) }
+    }
 }

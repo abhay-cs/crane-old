@@ -30,14 +30,16 @@ enum CraneAlert {
 
   @MainActor
   static func presentEphemeralStore() {
+    let storePath = Persistence.storeDirectoryPath
     let alert = NSAlert()
     alert.messageText = "crane can’t access its database"
     alert.informativeText =
       "Your drops will only be kept until you quit. "
       + "Quit other copies of crane, then restart. "
-      + "If this keeps happening, remove "
-      + "~/Library/Application Support/com.abhaycs.crane/crane.store and relaunch "
-      + "(you can restore from drops.json if it’s still there)."
+      + "If this keeps happening, remove the store files in:\n\n"
+      + storePath + "\n\n"
+      + "(delete crane.store and any crane.store-shm / crane.store-wal files). "
+      + "If drops.json is still there, crane will re-import it on the next launch."
     alert.alertStyle = .critical
     alert.runModal()
   }

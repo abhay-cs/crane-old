@@ -21,20 +21,30 @@ extension Array where Element == Drop {
         }
     }
 
-    /// Consecutive day count ending today where at least one drop exists.
-    /// If today has no drops, the streak is 0. If today has drops but
-    /// yesterday doesn't, the streak is 1, etc.
+    /// Consecutive days with at least one drop, counting backward from
+    /// today when today has activity, otherwise from the most recent
+    /// active day (so yesterday’s run still shows until you miss a day).
     var streakDays: Int {
         let cal = Calendar.current
         let buckets = Set(map { cal.startOfDay(for: $0.timestamp) })
         guard !buckets.isEmpty else { return 0 }
 
+        let today = cal.startOfDay(for: Date())
+        let cursor: Date
+        if buckets.contains(today) {
+            cursor = today
+        } else if let latest = buckets.max() {
+            cursor = latest
+        } else {
+            return 0
+        }
+
         var streak = 0
-        var cursor = cal.startOfDay(for: Date())
-        while buckets.contains(cursor) {
+        var day = cursor
+        while buckets.contains(day) {
             streak += 1
-            guard let prev = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
-            cursor = prev
+            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
+            day = prev
         }
         return streak
     }

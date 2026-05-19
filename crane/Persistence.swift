@@ -21,16 +21,23 @@ enum Persistence {
     /// on the main actor) and reused for the process lifetime.
     static let container: ModelContainer = makeContainer()
 
+    /// `true` when the on-disk store failed to open and an in-memory
+    /// fallback is in use (drops are lost on quit).
+    static private(set) var isEphemeralStore = false
+
     // MARK: - Container
 
     private static func makeContainer() -> ModelContainer {
-        let schema = Schema([Drop.self])
         let storeURL = applicationSupportDirectory()
             .appending(path: "crane.store", directoryHint: .notDirectory)
-        let config = ModelConfiguration(schema: schema, url: storeURL)
+        let config = ModelConfiguration(url: storeURL)
 
         do {
-            let container = try ModelContainer(for: schema, configurations: [config])
+            let container = try ModelContainer(
+                for: Drop.self,
+                migrationPlan: CraneMigrationPlan.self,
+                configurations: config
+            )
             migrateLegacyJSONIfNeeded(into: container.mainContext)
             return container
         } catch {
@@ -38,9 +45,14 @@ enum Persistence {
             // an in-memory container so the app still launches. The user's
             // legacy `drops.json` (if any) is left in place so a later
             // launch can retry the migration once the store is fixed.
-            let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            isEphemeralStore = true
+            let memory = ModelConfiguration(isStoredInMemoryOnly: true)
             // swiftlint:disable:next force_try
-            return try! ModelContainer(for: schema, configurations: [memory])
+            return try! ModelContainer(
+                for: Drop.self,
+                migrationPlan: CraneMigrationPlan.self,
+                configurations: memory
+            )
         }
     }
 

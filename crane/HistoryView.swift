@@ -147,14 +147,24 @@ struct HistoryView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 2) {
-                    ForEach(items) { drop in
-                        DropRow(drop: drop, onDelete: { delete(drop) })
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 2) {
+                        ForEach(items) { drop in
+                            DropRow(drop: drop, onDelete: { delete(drop) })
+                                .id(drop.id)
+                        }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .onAppear { scrollToFocusedDrop(in: items, proxy: proxy) }
+                .onChange(of: controller.scrollToDropID) { _, _ in
+                    scrollToFocusedDrop(in: items, proxy: proxy)
+                }
+                .onChange(of: items.count) { _, _ in
+                    scrollToFocusedDrop(in: items, proxy: proxy)
+                }
             }
         }
     }
@@ -168,7 +178,22 @@ struct HistoryView: View {
     private func delete(_ drop: Drop) {
         withAnimation(.easeOut(duration: 0.15)) {
             modelContext.delete(drop)
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+            } catch {
+                CraneAlert.presentSaveFailed(error)
+            }
+        }
+    }
+
+    private func scrollToFocusedDrop(in items: [Drop], proxy: ScrollViewProxy) {
+        guard let targetID = controller.scrollToDropID,
+            items.contains(where: { $0.id == targetID })
+        else { return }
+        DispatchQueue.main.async {
+            withAnimation(.craneSnappy) {
+                proxy.scrollTo(targetID, anchor: .center)
+            }
         }
     }
 }

@@ -11,6 +11,7 @@
 //  The capture bar is rendered with macOS 26 Liquid Glass.
 //
 
+import AppKit
 import SwiftUI
 import SwiftData
 
@@ -41,6 +42,17 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.craneSpring, value: controller.currentView)
+        .background { overlayShortcuts }
+    }
+
+    @ViewBuilder
+    private var overlayShortcuts: some View {
+        Button("Quit crane") { NSApp.terminate(nil) }
+            .keyboardShortcut("q", modifiers: .command)
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
     }
 }
 
@@ -130,6 +142,9 @@ private struct DropInputBar: View {
         .onChange(of: controller.currentView) { _, newValue in
             if newValue == .input { inputFocused = true }
         }
+        .onChange(of: controller.inputResetToken) { _, _ in
+            resetDraft()
+        }
         .animation(.craneSnappy, value: linkMode)
         .animation(.craneSnappy, value: justSaved)
     }
@@ -155,30 +170,52 @@ private struct DropInputBar: View {
 
     private func submit() {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !saving else { return }
+        guard !trimmed.isEmpty, !saving, !justSaved else { return }
+
+        let body: String
+        if linkMode {
+            guard Drop.isValidLinkText(trimmed) else {
+                CraneAlert.presentInvalidLink()
+                return
+            }
+            body = Drop.normalizedLinkText(trimmed)
+        } else {
+            body = trimmed
+        }
+
         saving = true
         let drop = Drop(
-            text: trimmed,
-            dropType: linkMode ? .link : .thought
+            text: body,
+            dropType: linkMode ? .link : .thought,
+            sourceApp: controller.capturedSourceApp
         )
         modelContext.insert(drop)
-        try? modelContext.save()
-        saving = false
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.delete(drop)
+            saving = false
+            CraneAlert.presentSaveFailed(error)
+            return
+        }
 
         // Brief checkmark blip in the leading-icon slot, then hide. The
         // 250 ms delay lets the symbol replace + bounce play before the
         // panel disappears.
         justSaved = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            justSaved = false
-            hideAndReset()
-        }
+        controller.scheduleAfterSaveDismiss { hideAndReset() }
     }
 
     private func hideAndReset() {
+        resetDraft()
+        controller.hide()
+    }
+
+    private func resetDraft() {
         text = ""
         linkMode = false
-        controller.hide()
+        saving = false
+        justSaved = false
     }
 }
 
@@ -192,6 +229,16 @@ private struct HintChips: View {
             HintKey("↵")
             Text("save")
                 .foregroundStyle(.tertiary)
+
+            if linkMode {
+                HintKey("⌘L")
+                Text("thought")
+                    .foregroundStyle(.tertiary)
+            } else {
+                HintKey("⌘L")
+                Text("link")
+                    .foregroundStyle(.tertiary)
+            }
 
             HintKey("esc")
             Text("dismiss")

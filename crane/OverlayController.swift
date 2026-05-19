@@ -33,12 +33,37 @@ final class OverlayController {
         didSet { applySize(for: currentView, animated: true) }
     }
 
+    /// When set, `HistoryView` scrolls to this drop after appearing.
+    var scrollToDropID: UUID?
+
+    /// Bumped on every dismiss so `DropInputBar` clears draft state even
+    /// when Esc is handled at the panel level instead of SwiftUI.
+    private(set) var inputResetToken = UUID()
+
+    /// Frontmost app name captured before the overlay takes key focus.
+    private(set) var capturedSourceApp: String?
+
+    /// Invalidates in-flight post-save dismiss callbacks.
+    private var saveDismissGeneration = 0
+
+    private static let screenMargin: CGFloat = 16
+
     private let panel: OverlayPanel
     private var hostingView: NSHostingView<AnyView>?
+    private var screenObserver: NSObjectProtocol?
 
     init() {
         panel = OverlayPanel(initialSize: Self.inputSize)
-        panel.onCancel = { [weak self] in self?.hide() }
+        panel.onCancel = { [weak self] in self?.handleCancelKey() }
+
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, self.panel.isVisible else { return }
+            self.positionOnActiveScreen()
+        }
     }
 
     /// Install the SwiftUI root once the controller is wired up — we pass
@@ -69,10 +94,13 @@ final class OverlayController {
     // MARK: - Show / Hide / Toggle
 
     func show() {
+        cancelAfterSaveDismiss()
+        captureSourceApp()
         // Always start in the input view (matches Tauri "reset-to-input").
         if currentView != .input {
             currentView = .input
         }
+        scrollToDropID = nil
         positionOnActiveScreen()
         // orderFrontRegardless avoids needing app activation, since we run
         // as an Accessory app (no Dock icon).
@@ -80,8 +108,48 @@ final class OverlayController {
         panel.makeKey()
     }
 
+    /// Show the history list, optionally scrolling to a specific drop.
+    func openHistory(focusing dropID: UUID? = nil) {
+        cancelAfterSaveDismiss()
+        captureSourceApp()
+        scrollToDropID = dropID
+        if currentView != .history {
+            currentView = .history
+        }
+        positionOnActiveScreen()
+        panel.orderFrontRegardless()
+        panel.makeKey()
+    }
+
     func hide() {
+        cancelAfterSaveDismiss()
+        scrollToDropID = nil
+        capturedSourceApp = nil
+        inputResetToken = UUID()
         panel.orderOut(nil)
+    }
+
+    /// Schedules `block` after a save animation unless superseded by show/hide.
+    func scheduleAfterSaveDismiss(_ block: @escaping () -> Void) {
+        saveDismissGeneration += 1
+        let generation = saveDismissGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            guard generation == self.saveDismissGeneration else { return }
+            block()
+        }
+    }
+
+    func cancelAfterSaveDismiss() {
+        saveDismissGeneration += 1
+    }
+
+    /// Esc: history → input pill; input → dismiss overlay.
+    private func handleCancelKey() {
+        if currentView == .history {
+            currentView = .input
+        } else {
+            hide()
+        }
     }
 
     func toggle() {
@@ -100,22 +168,61 @@ final class OverlayController {
             ?? panel.screen
         guard let visible = screen?.visibleFrame else { return }
 
-        let size = panel.frame.size
-        let x = visible.origin.x + (visible.width - size.width) / 2
-        let y = visible.origin.y + visible.height - size.height - (visible.height * 0.28)
-        panel.setFrameOrigin(NSPoint(x: x.rounded(), y: y.rounded()))
+        var frame = panel.frame
+        frame = clampFrame(frame, to: visible)
+        let x = visible.origin.x + (visible.width - frame.width) / 2
+        let y = visible.origin.y + visible.height - frame.height - (visible.height * 0.28)
+        frame.origin = NSPoint(x: x.rounded(), y: y.rounded())
+        panel.setFrame(clampFrame(frame, to: visible), display: true)
     }
 
     private func applySize(for view: OverlayView, animated: Bool) {
         let target = view == .input ? Self.inputSize : Self.historySize
         let current = panel.frame
+        let visible = panel.screen?.visibleFrame
+            ?? NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }?.visibleFrame
+            ?? NSScreen.main?.visibleFrame
         // Anchor to the top edge so the bar stays put while the panel grows
         // downward into the history list.
-        let newOrigin = NSPoint(
+        var newOrigin = NSPoint(
             x: current.origin.x + (current.width - target.width) / 2,
             y: current.origin.y + (current.height - target.height)
         )
-        let newFrame = NSRect(origin: newOrigin, size: target)
+        var newFrame = NSRect(origin: newOrigin, size: target)
+        if let visible {
+            newFrame = clampFrame(newFrame, to: visible)
+        }
         panel.setFrame(newFrame, display: true, animate: animated)
+    }
+
+    /// Keeps the panel fully inside the active display's visible area.
+    private func clampFrame(_ frame: NSRect, to visible: NSRect) -> NSRect {
+        let margin = Self.screenMargin
+        var f = frame
+        let maxW = max(200, visible.width - margin * 2)
+        let maxH = max(Self.inputSize.height, visible.height - margin * 2)
+        f.size.width = min(f.width, maxW)
+        f.size.height = min(f.height, maxH)
+        f.origin.x = min(
+            max(f.origin.x, visible.minX + margin),
+            visible.maxX - f.width - margin
+        )
+        f.origin.y = min(
+            max(f.origin.y, visible.minY + margin),
+            visible.maxY - f.height - margin
+        )
+        return f
+    }
+
+    private func captureSourceApp() {
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            capturedSourceApp = nil
+            return
+        }
+        if app.bundleIdentifier == Bundle.main.bundleIdentifier {
+            capturedSourceApp = nil
+            return
+        }
+        capturedSourceApp = app.localizedName
     }
 }

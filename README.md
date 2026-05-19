@@ -41,11 +41,11 @@ This is not a notes app. It's a *holding pen* between flow and proper capture. T
 
 ## What it does
 
-- **⌘⇧Space, anywhere.** A 596×64pt Spotlight-style pill drops in at the upper third of the active screen. The text field is already focused.
+- **⌘⇧Space, anywhere.** A 620×88pt panel (64pt capture pill + padding) drops in at the upper third of the active screen. The text field is already focused.
 - **Type → Enter.** The drop is persisted. Pill dismisses with a quick checkmark blip.
 - **⌘L toggles "link" mode.** A `LINK` badge appears; the URL is parsed and rendered as a clickable link in history.
 - **⌘H opens history.** The same panel grows downward into a searchable list of every drop, newest-first, with per-row delete on hover.
-- **Esc anywhere dismisses.**
+- **Esc** dismisses the capture pill; in history, Esc returns to the pill (⌘⇧Space toggles the panel from anywhere).
 - **Menu-bar dashboard** (the drop-shaped tray icon) gives you a glance at how the holding pen is doing: TOTAL / TODAY / STREAK cards, a 14-day activity sparkline, a thoughts-vs-links bar, and the three most recent drops.
 
 No Dock icon. No Cmd-Tab entry. crane lives in your menu bar and behind a global keystroke.
@@ -65,6 +65,8 @@ open crane.xcodeproj
 
 There's no release artifact yet; building from source is the supported path.
 
+**Issue tracker:** [issues.md](issues.md) — prioritized open/fixed items for MVP and v1.
+
 ---
 
 ## Keyboard
@@ -76,8 +78,9 @@ There's no release artifact yet; building from source is the supported path.
 | Capture pill | ⌘L | Toggle link mode |
 | Capture pill | ⌘H | Switch to history view |
 | Capture pill | Esc | Dismiss |
-| History | ⌫ on a row's × button | Delete that drop |
-| History | Esc | Back to capture pill |
+| Capture pill or history | ⌘Q | Quit |
+| History | ⌫ on a row's × button | Delete that drop (with confirmation) |
+| History | Esc | Back to capture pill (Esc again dismisses) |
 | Menu-bar window | ⌘Q | Quit |
 
 The global combo is registered via Carbon's `RegisterEventHotKey`, which works inside the App Sandbox without extra entitlements — see `crane/GlobalHotkey.swift`.
@@ -121,6 +124,10 @@ The menu-bar dashboard and the overlay panel point to **the same shared `ModelCo
 | `Persistence.swift` | Single shared `ModelContainer` + one-time JSON-store migration. |
 | `DropStats.swift` | `[Drop]` extension powering the dashboard's `todayCount`, `streakDays`, `dailyCounts(days:)`, `typeBreakdown`. |
 | `Design.swift` | All shared design tokens: motion, corner radius, specular border. |
+| `CraneAlert.swift` | AppKit alerts for save failures, bad links, ephemeral store, hotkey registration. |
+| `Drop+Link.swift` | Link normalization (`https://` prefix) and validation helpers. |
+| `CraneSchema.swift` | SwiftData `CraneSchemaV1` + `CraneMigrationPlan` for forward-compatible migrations. |
+| `SingleInstance.swift` | Prevents two crane processes from sharing one store. |
 
 ---
 
@@ -208,7 +215,7 @@ These are slots the current code intentionally leaves open for, not promises:
 
 - **AI-extracted tags + daily digest.** `DashboardView` has a documented empty slot between the type-breakdown and the recent list, sized for a tag-chip row and a digest card. The plan is to extract tags from drops with an LLM (locally, ideally) and surface them so the holding pen becomes self-organising over time.
 - **Voice capture.** Push-to-talk via the same global combo, dictation into the same pill.
-- **Source app attribution.** The `Drop.sourceApp` field already exists; recording the front app at capture time is a one-line change in `DropInputBar.submit()`. We left the wire in but don't fill it yet.
+- **Source app attribution in history.** `Drop.sourceApp` is recorded at capture time; richer “captured from Figma” UI in rows is still TBD.
 - **Per-drop tagging UI.** Once tags exist, a chip-row inside `DropRow` for filtering history.
 - **iCloud sync** via SwiftData's CloudKit integration — currently off, intentionally; crane is single-device on purpose for now.
 

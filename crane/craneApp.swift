@@ -21,8 +21,11 @@ struct craneApp: App {
         MenuBarExtra {
             DashboardView()
         } label: {
-            // SF Symbol kept simple for menu-bar template rendering.
-            Image(systemName: "drop.fill")
+            // Custom vector template asset (MenuBarIcon.imageset) — the
+            // "Cr" wordmark with the lowercase r drawn as a tower crane,
+            // matching the app icon. Rendered as a template so AppKit
+            // tints it for light/dark menu bars.
+            Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
         // Single shared container; the overlay panel also installs this

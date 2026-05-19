@@ -67,7 +67,7 @@ struct DashboardView: View {
             Spacer()
 
             Menu {
-                Button("Open History") { openOverlayHistory() }
+                Button("Open History") { openOverlayHistory(focusing: nil) }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12, weight: .semibold))
@@ -140,7 +140,7 @@ struct DashboardView: View {
                     ForEach(items) { drop in
                         DropRow(drop: drop, onDelete: { delete(drop) })
                             .contentShape(Rectangle())
-                            .onTapGesture { openOverlayHistory() }
+                            .onTapGesture { openOverlayHistory(focusing: drop.id) }
                     }
                 }
             }
@@ -148,8 +148,14 @@ struct DashboardView: View {
     }
 
     private func delete(_ drop: Drop) {
-        modelContext.delete(drop)
-        try? modelContext.save()
+        withAnimation(.easeOut(duration: 0.15)) {
+            modelContext.delete(drop)
+            do {
+                try modelContext.save()
+            } catch {
+                CraneAlert.presentSaveFailed(error)
+            }
+        }
     }
 
     // MARK: Footer
@@ -157,7 +163,7 @@ struct DashboardView: View {
     private var footer: some View {
         HStack(spacing: 0) {
             FooterButton(shortcut: "⌘⇧Space", label: "New Drop") {
-                AppDelegate.shared?.toggleOverlay()
+                AppDelegate.shared?.showOverlay()
             }
             Spacer()
             FooterButton(shortcut: "⌘Q", label: "Quit") {
@@ -183,10 +189,8 @@ struct DashboardView: View {
         }
     }
 
-    private func openOverlayHistory() {
-        guard let app = AppDelegate.shared else { return }
-        app.showOverlay()
-        app.overlay.currentView = .history
+    private func openOverlayHistory(focusing dropID: UUID?) {
+        AppDelegate.shared?.showOverlayHistory(focusing: dropID)
     }
 }
 
@@ -216,6 +220,8 @@ private struct StatCard: View {
             in: .rect(cornerRadius: 16, style: .continuous)
         )
         .specularBorder(cornerRadius: 16)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label), \(value)")
     }
 }
 

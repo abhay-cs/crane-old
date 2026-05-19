@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>crane — a holding pen for the thoughts you catch mid-flow</title>
+    <meta
+      name="description"
+      content="crane is a floating capture bar for macOS. ⌘⇧Space anywhere, type a thought, hit Enter. Total elapsed time: about two seconds. The thought is yours to come back to on your own terms."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
+  </head>
+  <body>
+    <!-- Grain + atmosphere -->
+    <div class="canvas-grain" aria-hidden="true"></div>
+    <div class="canvas-light" aria-hidden="true"></div>
+
+    <!-- ============ NAV ============ -->
+    <header class="nav" aria-label="Primary">
+      <div class="nav__inner">
+        <a href="#top" class="brand" aria-label="crane home">
+          <span class="brand__mark" aria-hidden="true">
+            <img src="assets/app-icon.svg" alt="" width="30" height="30" decoding="async" />
+          </span>
+          <span class="brand__word">crane</span>
+        </a>
+
+        <nav class="nav__links" aria-label="Sections">
+          <a href="#idea">The idea</a>
+          <a href="#preview">Preview</a>
+          <a href="#features">Features</a>
+        </nav>
+
+        <div class="nav__actions">
+          <button
+            class="theme-toggle"
+            type="button"
+            aria-label="Toggle color theme"
+            data-theme-toggle
+          >
+            <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <path
+                d="M16.5 12.8a7 7 0 01-9.3-9.3.5.5 0 00-.7-.6 8 8 0 1010.6 10.6.5.5 0 00-.6-.7z"
+                fill="currentColor"
+              />
+            </svg>
+            <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+              <circle cx="10" cy="10" r="3.4" fill="currentColor" />
+              <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <line x1="10" y1="2" x2="10" y2="4" />
+                <line x1="10" y1="16" x2="10" y2="18" />
+                <line x1="2" y1="10" x2="4" y2="10" />
+                <line x1="16" y1="10" x2="18" y2="10" />
+                <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" />
+                <line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
+                <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" />
+                <line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
+              </g>
+            </svg>
+          </button>
+
+          <a class="btn btn--ghost btn--sm" href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M8 0a8 8 0 00-2.5 15.6c.4.1.6-.2.6-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.2 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8.6-.2 1.3-.3 2-.3.7 0 1.3.1 2 .3 1.5-1 2.1-.8 2.1-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.2 0 3-1.8 3.7-3.6 3.9.3.3.5.7.5 1.5v2.2c0 .2.2.5.6.4A8 8 0 008 0z"
+              />
+            </svg>
+            <span>GitHub</span>
+          </a>
+
+          <a class="btn btn--primary btn--sm" href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+              <path
+                d="M11.6 2c.1 1-.3 2-.9 2.6-.6.7-1.6 1.2-2.5 1.1-.1-1 .4-2 .9-2.5.7-.7 1.7-1.2 2.5-1.2zm2.3 11.1c-.3.7-.5 1-.9 1.6-.6.8-1.4 1.8-2.4 1.8-.9 0-1.2-.6-2.4-.6-1.3 0-1.6.6-2.4.6-1 0-1.8-.9-2.4-1.8-1.6-2.3-1.8-5.1-.8-6.6.7-1.1 1.8-1.7 2.9-1.7 1.1 0 1.7.6 2.7.6.9 0 1.5-.6 2.7-.6 1 0 2 .5 2.8 1.5-2.4 1.4-2 4.6 0 5.2z"
+                fill="currentColor"
+              />
+            </svg>
+            <span>Build from source</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- ============ HERO ============ -->
+      <section class="hero">
+        <div class="hero__inner">
+          <div class="hero__eyebrow reveal">
+            <span class="dot"></span>
+            <span>Crane 1.0</span>
+          </div>
+
+          <h1 class="hero__title reveal" data-delay="80">
+            <span>Don&rsquo;t switch apps</span>
+            <span class="hero__title-italic">for a sentence in your head.</span>
+          </h1>
+
+          <p class="hero__sub reveal" data-delay="160">
+            A floating capture bar that lives behind <kbd class="kbd">⌘</kbd><kbd class="kbd">⇧</kbd><kbd class="kbd">Space</kbd> and a menu-bar drop. Type a thought,
+            hit Enter, get back to your editor. Total elapsed time: roughly two seconds. <em>The thought is yours to come back to on your own terms&nbsp;—&nbsp;not the brain's.</em>
+          </p>
+
+          <div class="hero__actions reveal" data-delay="240">
+            <a class="btn btn--primary btn--lg" href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener" id="download">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path
+                  d="M11.6 2c.1 1-.3 2-.9 2.6-.6.7-1.6 1.2-2.5 1.1-.1-1 .4-2 .9-2.5.7-.7 1.7-1.2 2.5-1.2zm2.3 11.1c-.3.7-.5 1-.9 1.6-.6.8-1.4 1.8-2.4 1.8-.9 0-1.2-.6-2.4-.6-1.3 0-1.6.6-2.4.6-1 0-1.8-.9-2.4-1.8-1.6-2.3-1.8-5.1-.8-6.6.7-1.1 1.8-1.7 2.9-1.7 1.1 0 1.7.6 2.7.6.9 0 1.5-.6 2.7-.6 1 0 2 .5 2.8 1.5-2.4 1.4-2 4.6 0 5.2z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Build from source</span>
+              <span class="btn__meta">macOS 26.4 · Xcode 26</span>
+            </a>
+            <a class="btn btn--ghost btn--lg" href="#preview">
+              <span>See it in action</span>
+              <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+                <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          </div>
+
+          <div class="hero__meta reveal" data-delay="320">
+            <span><span class="hero__meta-num">2s</span> from intention to written</span>
+            <span class="hero__meta-sep" aria-hidden="true">·</span>
+            <span>No Dock icon · No Cmd-Tab entry</span>
+            <span class="hero__meta-sep" aria-hidden="true">·</span>
+            <span>Built on SwiftData & Liquid Glass</span>
+          </div>
+        </div>
+
+        <!-- ============ INTERACTIVE MACOS WINDOW PREVIEW ============ -->
+        <div class="stage reveal" data-delay="400">
+          <div class="mac" role="img" aria-label="Live preview of the crane capture pill floating over a macOS desktop">
+            <!-- Window chrome -->
+            <div class="mac__bar">
+              <div class="mac__lights" aria-hidden="true">
+                <span class="mac__light mac__light--red"></span>
+                <span class="mac__light mac__light--yellow"></span>
+                <span class="mac__light mac__light--green"></span>
+              </div>
+              <div class="mac__title">
+                <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 1h6v3l-2 2 2 2v3H3V8l2-2-2-2V1z" fill="currentColor"/></svg>
+                <span>app · Xcode 26 · ContentView.swift</span>
+              </div>
+              <div class="mac__tabs">
+                <span class="mac__tab mac__tab--active">ContentView</span>
+                <span class="mac__tab">Design</span>
+                <span class="mac__tab">+</span>
+              </div>
+            </div>
+
+            <!-- Editor backdrop -->
+            <div class="mac__body">
+              <div class="mac__editor">
+                <pre class="mac__code" aria-hidden="true"><code><span class="t-c">// Capture the thought, get out of the way.</span>
+<span class="t-k">struct</span> <span class="t-t">DropInputBar</span>: <span class="t-t">View</span> {
+  @<span class="t-k">FocusState</span> <span class="t-k">var</span> focused: <span class="t-t">Bool</span>
+  @<span class="t-k">State</span> <span class="t-k">var</span> text: <span class="t-t">String</span> = <span class="t-s">""</span>
+
+  <span class="t-k">var</span> body: <span class="t-k">some</span> <span class="t-t">View</span> {
+    <span class="t-t">HStack</span>(spacing: <span class="t-n">12</span>) {
+      <span class="t-t">Image</span>(systemName: <span class="t-s">"square.and.pencil"</span>)
+      <span class="t-t">TextField</span>(<span class="t-s">"Drop your thought…"</span>, text: $text)
+        .focused($focused)
+        .onSubmit { save() }
+      <span class="t-t">HintChip</span>(<span class="t-s">"save"</span>, <span class="t-s">"↵"</span>)
+    }
+    .padding(.horizontal, <span class="t-n">20</span>)
+    .frame(height: <span class="t-n">64</span>)
+    .background(.regularMaterial, <span class="t-k">in</span>: shape)
+    .specularBorder()
+  }
+}</code></pre>
+
+                <div class="mac__pill-stage">
+                <!-- The hero pill, floating in the upper third -->
+                <div class="pill" id="capturePill" data-state="capture">
+                  <div class="pill__icon">
+                    <svg class="pill__svg pill__svg--pencil" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                      <path d="M14.5 2.5l3 3-9.5 9.5-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="pill__svg pill__svg--link" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                      <path d="M8 12l4-4M6 14a3 3 0 010-4l2-2M14 6a3 3 0 010 4l-2 2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <svg class="pill__svg pill__svg--check" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                      <path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <div class="pill__text" id="pillText"><span class="pill__caret"></span></div>
+                  <div class="pill__badge" id="pillLinkBadge">LINK</div>
+                  <div class="pill__hints">
+                    <span class="hint"><span class="hint__key">↵</span> save</span>
+                    <span class="hint"><span class="hint__key">⌘L</span> link</span>
+                    <span class="hint"><span class="hint__key">⌘H</span> history</span>
+                  </div>
+                </div>
+
+                <!-- Expanding history card -->
+                <div class="history" id="historyCard">
+                  <div class="history__head">
+                    <button class="history__back" type="button" aria-label="Back to capture">
+                      <svg viewBox="0 0 16 16" width="13" height="13"><path d="M10 4L6 8l4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div class="history__search">
+                      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                      <span>Search drops</span>
+                    </div>
+                    <span class="history__count">14 drops</span>
+                  </div>
+                  <ul class="history__list">
+                    <li class="history__row">
+                      <span class="history__icon">✎</span>
+                      <span class="history__text">Email Maya about Friday — try the late slot</span>
+                      <span class="history__time">just now</span>
+                    </li>
+                    <li class="history__row history__row--link">
+                      <span class="history__icon">↗</span>
+                      <span class="history__text">linear.app/issue/CRN-204 — sparkline edge case</span>
+                      <span class="history__time">2m</span>
+                    </li>
+                    <li class="history__row">
+                      <span class="history__icon">✎</span>
+                      <span class="history__text">Try a tag system for crane — maybe locally with mlx</span>
+                      <span class="history__time">11m</span>
+                    </li>
+                    <li class="history__row">
+                      <span class="history__icon">✎</span>
+                      <span class="history__text">That bit Jay said about borderless NSPanels</span>
+                      <span class="history__time">38m</span>
+                    </li>
+                    <li class="history__row history__row--link">
+                      <span class="history__icon">↗</span>
+                      <span class="history__text">developer.apple.com/.../liquid-glass</span>
+                      <span class="history__time">1h</span>
+                    </li>
+                    <li class="history__row">
+                      <span class="history__icon">✎</span>
+                      <span class="history__text">Re-read the typography section before Monday</span>
+                      <span class="history__time">2h</span>
+                    </li>
+                  </ul>
+                </div>
+                </div>
+              </div>
+            </div>
+            <!-- Edge-of-screen menu-bar mimic -->
+            <div class="menubar" aria-hidden="true">
+              <span class="menubar__app">Xcode</span>
+              <span class="menubar__app">File</span>
+              <span class="menubar__app">Edit</span>
+              <span class="menubar__app">View</span>
+              <span class="menubar__app">Find</span>
+              <span class="menubar__sp"></span>
+              <span class="menubar__icon">◐</span>
+              <span class="menubar__icon menubar__icon--crane" title="crane">
+                <svg viewBox="0 0 14 14" width="11" height="11"><path d="M4 3.5c0-.5.4-.9.9-.9h4.2c.5 0 .9.4.9.9v5.3c0 1.8-1 2.7-3 2.7s-3-.9-3-2.7V3.5z" fill="currentColor"/></svg>
+              </span>
+              <span class="menubar__icon">⏵</span>
+              <span class="menubar__time">9:41</span>
+            </div>
+          </div>
+
+          <!-- Stage controls -->
+          <div class="stage__controls" role="tablist" aria-label="Preview state">
+            <button data-pill-state="capture" class="stage-chip is-active" type="button" role="tab">
+              <span class="stage-chip__dot"></span>Capture
+            </button>
+            <button data-pill-state="link" class="stage-chip" type="button" role="tab">
+              <span class="stage-chip__dot"></span>Link mode
+            </button>
+            <button data-pill-state="saved" class="stage-chip" type="button" role="tab">
+              <span class="stage-chip__dot"></span>Saved
+            </button>
+            <button data-pill-state="history" class="stage-chip" type="button" role="tab">
+              <span class="stage-chip__dot"></span>History
+            </button>
+            <button class="stage-chip stage-chip--ghost" type="button" data-pill-replay>
+              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3 8a5 5 0 109-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M12 2v3.5H8.5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Replay
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MARQUEE / TRUST STRIP ============ -->
+      <section class="strip" aria-label="Built on">
+        <div class="strip__inner">
+          <span class="strip__label">Built on</span>
+          <div class="strip__items">
+            <span>SwiftData</span>
+            <span class="strip__sep">·</span>
+            <span>Liquid Glass</span>
+            <span class="strip__sep">·</span>
+            <span>MenuBarExtra</span>
+            <span class="strip__sep">·</span>
+            <span>Carbon hotkeys</span>
+            <span class="strip__sep">·</span>
+            <span>NSPanel · borderless</span>
+            <span class="strip__sep">·</span>
+            <span>SwiftUI 6</span>
+            <span class="strip__sep">·</span>
+            <span>App Sandbox</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ THE IDEA ============ -->
+      <section class="idea" id="idea">
+        <div class="idea__inner">
+          <div class="idea__eyebrow">
+            <span class="rule"></span>
+            <span class="caps">The idea</span>
+          </div>
+          <h2 class="idea__h">
+            You're three layers deep in a Figma file<span class="dim">,</span>
+            <span class="italic">and your brain does the thing it always does.</span>
+          </h2>
+          <div class="idea__grid">
+            <div class="idea__col">
+              <p>
+                <em class="italic">"I should email Maya about Friday."</em><br />
+                <em class="italic">"What was that link Jay sent me?"</em><br />
+                <em class="italic">"Add a tag system to crane."</em>
+              </p>
+              <p>
+                Three options, all bad. Hold the thought and watch your real task degrade.
+                Switch apps to write it down properly and lose the flow you were protecting in the
+                first place. Or let it go, and it comes back at <span class="num">11:00&nbsp;PM</span>,
+                in the shower, three days later — the wrong moment, every time.
+              </p>
+            </div>
+            <div class="idea__col">
+              <p>
+                crane is the fourth option. A global <kbd class="kbd">⌘</kbd><kbd class="kbd">⇧</kbd><kbd class="kbd">Space</kbd> anywhere,
+                a one-line capture pill in the upper third of your screen, hit
+                <kbd class="kbd">↵</kbd> — the pill dismisses, you're back in your editor.
+              </p>
+              <p>
+                <strong>This is not a notes app.</strong> It's a holding pen between flow and
+                proper capture. The history is meant to be skimmed at the end of a session and
+                either acted on or discarded.
+              </p>
+            </div>
+          </div>
+
+          <blockquote class="pull">
+            <div class="pull__mark" aria-hidden="true">"</div>
+            <p>
+              Friction so low your <em class="italic">real</em> task barely notices the interruption.
+              No naming files. No choosing folders. No waiting for an Electron window to come up —
+              just open, type, enter.
+            </p>
+          </blockquote>
+        </div>
+      </section>
+
+      <!-- ============ PREVIEW / WALKTHROUGH ============ -->
+      <section class="preview" id="preview">
+        <div class="preview__head">
+          <div class="caps caps--accent">A walkthrough</div>
+          <h2 class="preview__h">
+            Three keystrokes. <span class="italic">Three states.</span>
+          </h2>
+          <p class="preview__sub">
+            Capture, link, and history share <em class="italic">one</em> borderless panel. Switching
+            between them animates the panel's frame downward while the SwiftUI hierarchy cross-fades —
+            so the pill stays exactly where your eye left it.
+          </p>
+        </div>
+
+        <div class="preview__grid">
+          <article class="step">
+            <header class="step__head">
+              <span class="step__num">01</span>
+              <h3>Catch it</h3>
+            </header>
+            <p>
+              Anywhere on macOS, hit <kbd class="kbd">⌘</kbd><kbd class="kbd">⇧</kbd><kbd class="kbd">Space</kbd>.
+              A 596×64pt pill drops in at the upper third of the active screen with the cursor already inside.
+              No dock animation, no app switch, no warm-up.
+            </p>
+            <div class="step__art">
+              <div class="step-pill">
+                <span class="step-pill__icon">✎</span>
+                <span class="step-pill__text">Drop your thought<span class="step-pill__caret"></span></span>
+                <span class="step-pill__hint">↵</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="step">
+            <header class="step__head">
+              <span class="step__num">02</span>
+              <h3>Mark it as a link</h3>
+            </header>
+            <p>
+              Hit <kbd class="kbd">⌘L</kbd> and a tiny <span class="badge">LINK</span> badge appears.
+              The URL is parsed at save-time and rendered as a clickable row in history. Same input, same
+              two-second flow.
+            </p>
+            <div class="step__art">
+              <div class="step-pill step-pill--link">
+                <span class="step-pill__icon">↗</span>
+                <span class="step-pill__text">linear.app/issue/CRN-204</span>
+                <span class="step-pill__badge">LINK</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="step">
+            <header class="step__head">
+              <span class="step__num">03</span>
+              <h3>Find it later</h3>
+            </header>
+            <p>
+              <kbd class="kbd">⌘H</kbd> grows the same panel downward into a searchable list of every drop,
+              newest-first, with per-row delete on hover. <kbd class="kbd">Esc</kbd> anywhere takes you back.
+            </p>
+            <div class="step__art">
+              <div class="step-history">
+                <div class="step-history__row"><span class="dot dot--thought"></span>Email Maya about Friday<span class="step-history__t">now</span></div>
+                <div class="step-history__row"><span class="dot dot--link"></span>linear.app/.../CRN-204<span class="step-history__t">2m</span></div>
+                <div class="step-history__row"><span class="dot dot--thought"></span>Tag system for crane (mlx?)<span class="step-history__t">11m</span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ FEATURE MATRIX ============ -->
+      <section class="features" id="features">
+        <div class="features__head">
+          <div class="caps caps--accent">Features</div>
+          <h2 class="features__h">
+            Small surface. <span class="italic">Considered every pixel.</span>
+          </h2>
+        </div>
+
+        <div class="matrix">
+          <article class="card card--lg">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3v6m0 6v6m9-9h-6m-6 0H3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Global capture, anywhere</h3>
+            <p>
+              <kbd class="kbd">⌘</kbd><kbd class="kbd">⇧</kbd><kbd class="kbd">Space</kbd> drops the pill on the
+              active screen's upper third — registered via Carbon's <code>RegisterEventHotKey</code>, so it
+              works inside the App Sandbox with no extra entitlements.
+            </p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 12l3 3 9-9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Save, then forget</h3>
+            <p>Type. Hit Enter. A quick checkmark blip and the pill is gone. The thought is captured in SwiftData.</p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 14l4-4M8 16a3 3 0 010-4l3-3M16 8a3 3 0 010 4l-3 3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Link mode</h3>
+            <p>
+              <kbd class="kbd">⌘L</kbd> toggles a <span class="badge">LINK</span> badge. URLs are parsed at save-time
+              and rendered as clickable rows in history.
+            </p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Searchable history</h3>
+            <p>
+              <kbd class="kbd">⌘H</kbd> expands the same panel into a searchable list, newest-first, with
+              per-row delete on hover.
+            </p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.6"/><circle cx="6.5" cy="7" r=".8" fill="currentColor"/></svg>
+            </div>
+            <h3>Menu-bar dashboard</h3>
+            <p>
+              A drop-shaped tray icon gives you TOTAL, TODAY, STREAK, a 14-day sparkline, a thoughts-vs-links
+              breakdown, and your three most recent drops.
+            </p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 2L4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Stays out of your way</h3>
+            <p>No Dock icon. No Cmd-Tab entry. crane lives in your menu bar and behind a global keystroke.</p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 7c4-2 12-2 16 0M4 12c4-2 12-2 16 0M4 17c4-2 12-2 16 0" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Liquid Glass surfaces</h3>
+            <p>
+              Materials, continuous corners, and a 0.5pt specular border on every primary surface. One motion
+              language, one corner radius, one edge highlight — across the pill, history, and dashboard.
+            </p>
+          </article>
+          <article class="card">
+            <div class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+            </div>
+            <h3>Single source of truth</h3>
+            <p>
+              One shared <code>ModelContainer</code> backs the pill and the dashboard. A capture lights up
+              TODAY, STREAK and the recent list live — both surfaces consume drops via <code>@Query</code>.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ KEYBOARD SHORTCUTS ============ -->
+      <section class="shortcuts">
+        <div class="shortcuts__inner">
+          <div class="shortcuts__head">
+            <div class="caps caps--accent">Keyboard</div>
+            <h2>The whole app in eight chords.</h2>
+            <p>
+              crane is a keyboard-first tool. Touching the mouse should be a choice, not a requirement.
+              Every chord is a single hand from the home row.
+            </p>
+          </div>
+
+          <div class="kbd-table" role="table">
+            <div class="kbd-row kbd-row--head" role="row">
+              <div role="columnheader">Where</div>
+              <div role="columnheader">Combo</div>
+              <div role="columnheader">Action</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Anywhere</div>
+              <div role="cell"><kbd class="kbd">⌘</kbd><kbd class="kbd">⇧</kbd><kbd class="kbd">Space</kbd></div>
+              <div role="cell">Toggle the capture pill</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Capture pill</div>
+              <div role="cell"><kbd class="kbd">↵</kbd></div>
+              <div role="cell">Save the drop, dismiss</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Capture pill</div>
+              <div role="cell"><kbd class="kbd">⌘</kbd><kbd class="kbd">L</kbd></div>
+              <div role="cell">Toggle link mode</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Capture pill</div>
+              <div role="cell"><kbd class="kbd">⌘</kbd><kbd class="kbd">H</kbd></div>
+              <div role="cell">Switch to history view</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Capture pill</div>
+              <div role="cell"><kbd class="kbd">Esc</kbd></div>
+              <div role="cell">Dismiss</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">History</div>
+              <div role="cell"><kbd class="kbd">⌫</kbd></div>
+              <div role="cell">Delete a drop (on a row's × button)</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">History</div>
+              <div role="cell"><kbd class="kbd">Esc</kbd></div>
+              <div role="cell">Back to capture pill</div>
+            </div>
+            <div class="kbd-row" role="row">
+              <div role="cell" class="kbd-row__where">Menu-bar window</div>
+              <div role="cell"><kbd class="kbd">⌘</kbd><kbd class="kbd">Q</kbd></div>
+              <div role="cell">Quit</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="dash" id="design">
+        <div class="dash__inner">
+          <div class="dash__copy">
+            <div class="caps caps--accent">Menu-bar dashboard</div>
+            <h2 class="dash__h">
+              A quiet read on the <span class="italic">holding pen.</span>
+            </h2>
+            <p>
+              Click the drop in your menu bar and a small panel slides down with TOTAL / TODAY / STREAK,
+              a 14-day activity sparkline, a thoughts-vs-links breakdown, and the three most recent drops —
+              all backed by the same <code>ModelContainer</code> as the pill.
+            </p>
+            <ul class="dash__list">
+              <li><span class="dash__bullet"></span> Two springs, one corner radius, one edge highlight</li>
+              <li><span class="dash__bullet"></span> Sparkline animates in on hover</li>
+              <li><span class="dash__bullet"></span> Recents update <em class="italic">live</em> when you capture</li>
+              <li><span class="dash__bullet"></span> Empty slot reserved for future AI tag chips</li>
+            </ul>
+          </div>
+
+          <div class="dashboard" aria-label="Menu-bar dashboard preview">
+            <div class="dashboard__head">
+              <div class="dashboard__brand">
+                <span class="dashboard__mark">
+                  <svg viewBox="0 0 14 14" width="11" height="11"><path d="M4 3.5c0-.5.4-.9.9-.9h4.2c.5 0 .9.4.9.9v5.3c0 1.8-1 2.7-3 2.7s-3-.9-3-2.7V3.5z" fill="currentColor"/></svg>
+                </span>
+                Crane
+              </div>
+              <span class="dashboard__tag">menu bar</span>
+            </div>
+
+            <div class="dashboard__stats">
+              <div class="stat">
+                <div class="stat__cap">TOTAL</div>
+                <div class="stat__num">412</div>
+              </div>
+              <div class="stat">
+                <div class="stat__cap">TODAY</div>
+                <div class="stat__num">8</div>
+              </div>
+              <div class="stat">
+                <div class="stat__cap">STREAK</div>
+                <div class="stat__num">23 <span class="stat__unit">d</span></div>
+              </div>
+            </div>
+
+            <div class="dashboard__section">
+              <div class="dashboard__h">
+                <span class="caps caps--xs">Activity</span>
+                <span class="dashboard__h-meta">last 14 days</span>
+              </div>
+              <div class="spark" aria-hidden="true">
+                <span class="spark__bar" style="--h: 18%"></span>
+                <span class="spark__bar" style="--h: 38%"></span>
+                <span class="spark__bar" style="--h: 22%"></span>
+                <span class="spark__bar" style="--h: 64%"></span>
+                <span class="spark__bar" style="--h: 48%"></span>
+                <span class="spark__bar" style="--h: 80%"></span>
+                <span class="spark__bar" style="--h: 56%"></span>
+                <span class="spark__bar" style="--h: 33%"></span>
+                <span class="spark__bar" style="--h: 70%"></span>
+                <span class="spark__bar" style="--h: 92%"></span>
+                <span class="spark__bar" style="--h: 60%"></span>
+                <span class="spark__bar" style="--h: 44%"></span>
+                <span class="spark__bar" style="--h: 78%"></span>
+                <span class="spark__bar" style="--h: 100%"></span>
+              </div>
+            </div>
+
+            <div class="dashboard__section">
+              <div class="dashboard__h">
+                <span class="caps caps--xs">Type</span>
+              </div>
+              <div class="bar">
+                <span class="bar__seg bar__seg--thought" style="--w: 68%"><em>thoughts</em><span>280</span></span>
+                <span class="bar__seg bar__seg--link" style="--w: 32%"><em>links</em><span>132</span></span>
+              </div>
+            </div>
+
+            <div class="dashboard__section">
+              <div class="dashboard__h">
+                <span class="caps caps--xs">Recent</span>
+                <span class="dashboard__h-meta">3 of 412</span>
+              </div>
+              <ul class="drop-list">
+                <li>
+                  <span class="drop-list__icon drop-list__icon--thought">✎</span>
+                  <span class="drop-list__t">Email Maya about Friday — try the late slot</span>
+                  <span class="drop-list__time">now</span>
+                </li>
+                <li>
+                  <span class="drop-list__icon drop-list__icon--link">↗</span>
+                  <span class="drop-list__t">linear.app/issue/CRN-204</span>
+                  <span class="drop-list__time">2m</span>
+                </li>
+                <li>
+                  <span class="drop-list__icon drop-list__icon--thought">✎</span>
+                  <span class="drop-list__t">Tag system for crane (mlx, local)</span>
+                  <span class="drop-list__time">11m</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="dashboard__foot">
+              <span><kbd class="kbd kbd--xs">⌘</kbd><kbd class="kbd kbd--xs">⇧</kbd><kbd class="kbd kbd--xs">Space</kbd> capture</span>
+              <span><kbd class="kbd kbd--xs">⌘</kbd><kbd class="kbd kbd--xs">Q</kbd> quit</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ============ FINAL CTA ============ -->
+      <section class="cta">
+        <div class="cta__inner">
+          <h2 class="cta__h">
+            Two seconds.<br />
+            <span class="italic">No&nbsp;naming files.<br />No&nbsp;choosing folders.</span>
+          </h2>
+          <div class="cta__row">
+            <a class="btn btn--primary btn--xl" href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path
+                  d="M11.6 2c.1 1-.3 2-.9 2.6-.6.7-1.6 1.2-2.5 1.1-.1-1 .4-2 .9-2.5.7-.7 1.7-1.2 2.5-1.2zm2.3 11.1c-.3.7-.5 1-.9 1.6-.6.8-1.4 1.8-2.4 1.8-.9 0-1.2-.6-2.4-.6-1.3 0-1.6.6-2.4.6-1 0-1.8-.9-2.4-1.8-1.6-2.3-1.8-5.1-.8-6.6.7-1.1 1.8-1.7 2.9-1.7 1.1 0 1.7.6 2.7.6.9 0 1.5-.6 2.7-.6 1 0 2 .5 2.8 1.5-2.4 1.4-2 4.6 0 5.2z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Build crane from source</span>
+              <span class="btn__meta">Tahoe · 26.4 · Xcode 26</span>
+            </a>
+            <a class="btn btn--ghost btn--xl" href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0a8 8 0 00-2.5 15.6c.4.1.6-.2.6-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.2 0-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8.6-.2 1.3-.3 2-.3.7 0 1.3.1 2 .3 1.5-1 2.1-.8 2.1-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.2 0 3-1.8 3.7-3.6 3.9.3.3.5.7.5 1.5v2.2c0 .2.2.5.6.4A8 8 0 008 0z"/></svg>
+              <span>Read the source</span>
+            </a>
+          </div>
+          <p class="cta__fine">
+            Requires macOS 26.4 (Tahoe) and Xcode 26. The capture pill registers via Carbon's
+            <code>RegisterEventHotKey</code> — works inside the App Sandbox without extra entitlements.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ FOOTER ============ -->
+      <footer class="foot">
+        <div class="foot__inner">
+          <div class="foot__brand">
+            <span class="brand__mark" aria-hidden="true">
+              <img src="assets/app-icon.svg" alt="" width="30" height="30" decoding="async" />
+            </span>
+            <div>
+              <div class="brand__word">crane</div>
+              <div class="foot__tagline">A holding pen for the thoughts you catch mid-flow.</div>
+            </div>
+          </div>
+
+          <div class="foot__cols">
+            <div>
+              <div class="caps caps--xs">Product</div>
+              <a href="#features">Features</a>
+              <a href="#preview">Walkthrough</a>
+            </div>
+            <div>
+              <div class="caps caps--xs">Open</div>
+              <a href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener">GitHub</a>
+              <a href="https://github.com/abhay-cs/crane/issues" target="_blank" rel="noopener">Issues</a>
+              <a href="https://github.com/abhay-cs/crane#readme" target="_blank" rel="noopener">README</a>
+              <a href="#">License (MIT)</a>
+            </div>
+            <div>
+              <div class="caps caps--xs">Elsewhere</div>
+              <a href="#">Changelog</a>
+              <a href="#">Roadmap</a>
+              <a href="#">Acknowledgements</a>
+              <a href="#">Press kit</a>
+            </div>
+          </div>
+        </div>
+        <div class="foot__rule"></div>
+        <div class="foot__base">
+          <span>© 2026 · crane is open source.</span>
+          <span class="foot__hint">
+            Designed in Winnipeg · built with SwiftUI, SwiftData, and Liquid Glass.
+          </span>
+        </div>
+      </footer>
+    </main>
+
+    <script src="app.js?v=4" defer></script>
+  </body>
+</html>

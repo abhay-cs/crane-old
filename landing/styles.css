@@ -51,12 +51,12 @@
   --text-3: rgba(244, 240, 232, 0.36);
   --text-4: rgba(244, 240, 232, 0.18);
 
-  --accent: var(--brand-blue);
-  --accent-soft: rgba(36, 0, 255, 0.14);
-  --accent-line: rgba(36, 0, 255, 0.35);
+  --accent: #94a4ff;
+  --accent-soft: rgba(148, 164, 255, 0.22);
+  --accent-line: rgba(148, 164, 255, 0.4);
   --accent-ink: var(--brand-cream);
 
-  --thought: #c8bdd8;
+  --thought: #e8e4f2;
   --link: #8eb8e8;
 
   /* glass surfaces */

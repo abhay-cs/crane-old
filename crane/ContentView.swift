@@ -217,13 +217,16 @@ private struct CaptureMirrorField: View {
     var onSubmit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
+    private static let captureFontSize: CGFloat = 22
+    private static let captureTracking: CGFloat = -0.15
+
     var body: some View {
         let caretColor = CraneColor.caret(for: colorScheme)
         ZStack(alignment: .leading) {
             TextField("", text: $text)
                 .textFieldStyle(.plain)
-                .font(CraneFont.display(26))
-                .tracking(-0.2)
+                .font(CraneFont.display(Self.captureFontSize))
+                .tracking(Self.captureTracking)
                 .foregroundStyle(Color.clear)
                 .tint(caretColor)
                 .focused($isFocused)
@@ -233,20 +236,27 @@ private struct CaptureMirrorField: View {
 
             if text.isEmpty {
                 Text(placeholder)
-                    .font(CraneFont.display(26))
-                    .tracking(-0.2)
+                    .font(CraneFont.display(Self.captureFontSize))
+                    .tracking(Self.captureTracking)
                     .foregroundStyle(Color.craneInkTertiary)
+                    // Nudge right while focused so the system caret isn’t buried under the label.
+                    .padding(.leading, isFocused ? 3 : 0)
+                    .offset(y: 2)
+                    .frame(maxHeight: .infinity, alignment: .center)
                     .allowsHitTesting(false)
             } else {
                 Text(text)
-                    .font(CraneFont.display(26))
-                    .tracking(-0.2)
+                    .font(CraneFont.display(Self.captureFontSize))
+                    .tracking(Self.captureTracking)
                     .foregroundStyle(Color.craneInk)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .offset(y: 2)
+                    .frame(maxHeight: .infinity, alignment: .center)
                     .allowsHitTesting(false)
             }
         }
+        .frame(height: DesignMetrics.inputRowHeight)
     }
 }
 
@@ -254,6 +264,7 @@ private struct CaptureMirrorField: View {
 
 private struct CaptureModeSegment: View {
     @Binding var linkMode: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 2) {
@@ -276,7 +287,7 @@ private struct CaptureModeSegment: View {
                 .background {
                     if selected {
                         Capsule(style: .continuous)
-                            .fill(CraneColor.accent)
+                            .fill(CraneColor.accentFill(for: colorScheme))
                     }
                 }
         }

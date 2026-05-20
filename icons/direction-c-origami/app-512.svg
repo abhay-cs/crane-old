@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="crane logo direction C origami">
+  <defs>
+    <clipPath id="squircle-c">
+      <path d="M256 0c123.789 0 152.785 0 177.215 12.457 30.428 18.466 47.862 35.9 66.328 66.328C512 103.215 512 132.211 512 256s0 152.785-12.457 177.215c-18.466 30.428-35.9 47.862-66.328 66.328C408.785 512 379.789 512 256 512S103.215 512 78.785 499.543c-30.428-18.466-47.862-35.9-66.328-66.328C0 408.785 0 379.789 0 256S0 103.215 12.457 78.785c18.466-30.428 35.9-47.862 66.328-66.328C103.215 0 132.211 0 256 0z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle-c)">
+    <rect width="512" height="512" fill="#2400FF"/>
+    <g fill="#F7E6C8">
+      <path d="M128 320 256 200 200 380z" opacity="0.85"/>
+      <path d="M200 380 256 200 312 380z"/>
+      <path d="m256 200 128 120-72 60z" opacity="0.92"/>
+      <path d="M256 200l44-80 40-20-20 60z"/>
+      <path d="m340 100 52-12-44 40z"/>
+    </g>
+    <g fill="none" stroke="#2400FF" stroke-width="4" stroke-linejoin="round" opacity="0.35">
+      <path d="M256 200 200 380m0-180 56 180m0-180 44-80"/>
+    </g>
+    <circle cx="392" cy="88" r="16" fill="#F7E6C8"/>
+  </g>
+</svg>

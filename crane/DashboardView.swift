@@ -32,9 +32,12 @@ struct DashboardView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "drop.fill")
-                .font(.system(size: 14, weight: .semibold))
+            Image("MenuBarIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
                 .foregroundStyle(CraneColor.accent)
+                .accessibilityHidden(true)
             Text("crane")
                 .font(CraneFont.display(18))
                 .tracking(-0.2)

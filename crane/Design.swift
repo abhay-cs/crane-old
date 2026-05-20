@@ -92,6 +92,24 @@ extension View {
 
 // MARK: - Surface modifiers
 
+private struct CraneCardSurfaceModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(CraneColor.accentSoft(for: colorScheme))
+                    .background {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
+            }
+            .specularBorder(cornerRadius: cornerRadius)
+    }
+}
+
 extension View {
     /// Primary overlay shell (input bar, history card). Material + surface tint + specular.
     func craneOverlayShell(cornerRadius: CGFloat = DesignMetrics.surfaceCornerRadius) -> some View {
@@ -108,15 +126,7 @@ extension View {
 
     /// Dashboard stat cards and count badges.
     func craneCard(cornerRadius: CGFloat = DesignMetrics.cardCornerRadius) -> some View {
-        background {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(CraneColor.accentSoft)
-                .background {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.regularMaterial)
-                }
-        }
-        .specularBorder(cornerRadius: cornerRadius)
+        modifier(CraneCardSurfaceModifier(cornerRadius: cornerRadius))
     }
 
     /// Inset search field and hint key chips.

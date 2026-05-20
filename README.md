@@ -90,6 +90,8 @@ The global combo is registered via Carbon's `RegisterEventHotKey`, which works i
 
 ## Architecture
 
+Full diagrams (context, layers, data flow, AI pipeline, module map): **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
 ```
 craneApp (SwiftUI scene + MenuBarExtra)
     │

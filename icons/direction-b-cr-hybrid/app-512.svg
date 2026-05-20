@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="crane logo direction B cr hybrid">
+  <defs>
+    <clipPath id="squircle-b">
+      <path d="M256 0c123.789 0 152.785 0 177.215 12.457 30.428 18.466 47.862 35.9 66.328 66.328C512 103.215 512 132.211 512 256s0 152.785-12.457 177.215c-18.466 30.428-35.9 47.862-66.328 66.328C408.785 512 379.789 512 256 512S103.215 512 78.785 499.543c-30.428-18.466-47.862-35.9-66.328-66.328C0 408.785 0 379.789 0 256S0 103.215 12.457 78.785c18.466-30.428 35.9-47.862 66.328-66.328C103.215 0 132.211 0 256 0z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle-b)">
+    <rect width="512" height="512" fill="#2400FF"/>
+    <g fill="#F7E6C8">
+      <path d="M281.6 221.9a115 115 0 1 0 0 86.2l-44.5-18a67 67 0 1 1 0-50.2z"/>
+      <path d="M325 215h47c28 0 42 15 42 37s-26 18-42 18v110h-47z"/>
+      <circle cx="448" cy="366" r="14"/>
+    </g>
+    <path fill="none" stroke="#F7E6C8" stroke-width="16" stroke-linecap="round" opacity="0.55" d="M200 248c-25-48-25-108 10-140"/>
+  </g>
+</svg>

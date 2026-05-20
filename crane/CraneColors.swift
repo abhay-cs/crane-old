@@ -20,7 +20,16 @@ enum CraneColor {
     static let warning = Color("CraneWarning")
     static let accent = Color.accentColor
 
-    static let accentSoft = accent.opacity(0.14)
+    /// Filled controls (segment pill, primary buttons). Slightly deeper than `accent` in dark mode.
+    static func accentFill(for scheme: ColorScheme) -> Color {
+        scheme == .dark
+            ? Color(red: 0.36, green: 0.42, blue: 0.92)
+            : accent
+    }
+
+    static func accentSoft(for scheme: ColorScheme) -> Color {
+        accentFill(for: scheme).opacity(scheme == .dark ? 0.22 : 0.14)
+    }
     static let creamLine = cream.opacity(0.07)
     static let inkLine = ink.opacity(0.08)
 

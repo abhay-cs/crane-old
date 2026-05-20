@@ -24,7 +24,12 @@ final class AIJobQueue {
     /// A tag-extraction job is in flight.
     private(set) var isProcessing = false
 
-    var isActive: Bool { isProcessing || pendingCount > 0 }
+    /// Active only when FM is available and work is queued or running.
+    var isActive: Bool {
+        guard case .available = service.tagAvailability else { return false }
+        return isProcessing || pendingCount > 0
+    }
+
     private var cooldownUntil: Date?
     private var lastRequestFinishedAt: Date?
 
@@ -41,6 +46,7 @@ final class AIJobQueue {
     }
 
     func enqueue(dropID: UUID) {
+        guard case .available = service.tagAvailability else { return }
         guard !pending.contains(dropID) else { return }
         pending.append(dropID)
         syncPublishedState()
@@ -67,13 +73,18 @@ final class AIJobQueue {
 
     private func drain() {
         guard !isRunning, !pending.isEmpty else { return }
-        guard case .available = service.tagAvailability else { return }
+
+        guard case .available = service.tagAvailability else {
+            pending.removeAll()
+            syncPublishedState()
+            return
+        }
 
         if let cooldownUntil, cooldownUntil > Date() {
             scheduleDrain(after: cooldownUntil.timeIntervalSinceNow)
             return
         }
-        cooldownUntil = nil
+        self.cooldownUntil = nil
 
         isRunning = true
         let dropID = pending.removeFirst()
@@ -117,6 +128,7 @@ final class AIJobQueue {
         do {
             let tags = try await service.extractTags(from: drop.text)
             drop.tags = tags
+            drop.aiTaggingFailed = false
             drop.aiProcessedAt = Date()
             try context.save()
         } catch {
@@ -124,14 +136,13 @@ final class AIJobQueue {
 
             if FoundationModelsService.isInferenceProviderCrash(error) {
                 cooldownUntil = Date().addingTimeInterval(Self.providerCrashCooldown)
-                // Re-queue this drop for after cooldown.
                 pending.insert(dropID, at: 0)
                 syncPublishedState()
                 return
             }
 
-            // Non-crash failures: mark processed with no tags so we don’t spin forever.
             drop.tags = []
+            drop.aiTaggingFailed = true
             drop.aiProcessedAt = Date()
             try? context.save()
         }

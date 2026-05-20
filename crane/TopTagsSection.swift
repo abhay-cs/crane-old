@@ -20,7 +20,14 @@ struct TopTagsSection: View {
     }
 
     private var isTagging: Bool {
-        queue.isActive || drops.untaggedCount > 0
+        if case .available = availability {
+            return queue.isActive || drops.untaggedCount > 0
+        }
+        return false
+    }
+
+    private var hasTaggingFailures: Bool {
+        drops.contains { $0.aiTaggingFailed }
     }
 
     var body: some View {
@@ -43,6 +50,11 @@ struct TopTagsSection: View {
                     AIUnavailableBanner(message: message)
                 } else if isTagging {
                     TagSkeletonRow()
+                } else if hasTaggingFailures {
+                    Text("Some drops couldn’t be tagged. New captures will retry when Apple Intelligence is available.")
+                        .font(CraneFont.ui(12))
+                        .foregroundStyle(Color.craneInkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("Tags appear on your thoughts after capture.")
                         .font(CraneFont.ui(12))

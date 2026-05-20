@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private(set) lazy var overlay: OverlayController = OverlayController()
     private let hotkey = GlobalHotkey()
+    private var wakeObserver: NSObjectProtocol?
 
     // MARK: - NSApplicationDelegate
 
@@ -28,26 +29,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.shared = self
 
-        // Run as a menu-bar / accessory app: no Dock icon, no Cmd-Tab entry.
-        // Mirrors `set_activation_policy(ActivationPolicy::Accessory)` in Rust.
         NSApp.setActivationPolicy(.accessory)
 
-        // Build SwiftUI hierarchy and install it in the panel.
         overlay.attach(rootView: ContentView())
 
-        // Register the global hotkey: ⌘⇧Space → toggle the overlay.
-        let hotkeyOK = hotkey.registerCommandShiftSpace { [weak self] in
-            self?.toggleOverlay()
-        }
-        if !hotkeyOK {
-            CraneAlert.presentHotkeyRegistrationFailed()
+        let hotkeyOK = registerHotkey()
+
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.registerHotkey()
         }
 
-        if Persistence.isEphemeralStore {
-            CraneAlert.presentEphemeralStore()
-        }
+        CraneAlert.presentLaunchWarnings(
+            hotkeyFailed: !hotkeyOK,
+            ephemeralStore: Persistence.isEphemeralStore
+        )
 
-        // Defer backfill so Apple Intelligence isn’t hit during launch alongside other services.
         Task {
             try? await Task.sleep(for: .seconds(8))
             await MainActor.run {
@@ -57,13 +57,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+        }
         hotkey.unregister()
+        SingleInstance.releaseLock()
     }
 
-    /// Don't quit when the (non-existent) main window closes — we're a
-    /// menu-bar app and the user quits via the tray menu.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    // MARK: - Hotkey
+
+    @discardableResult
+    private func registerHotkey() -> Bool {
+        hotkey.registerCommandShiftSpace { [weak self] in
+            self?.toggleOverlay()
+        }
     }
 
     // MARK: - Public API (called from MenuBarExtra)

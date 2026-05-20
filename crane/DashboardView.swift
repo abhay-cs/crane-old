@@ -10,8 +10,15 @@ import Charts
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
 
-    @Query(sort: \Drop.timestamp, order: .reverse)
-    private var drops: [Drop]
+    @Query private var drops: [Drop]
+
+    init() {
+        var descriptor = FetchDescriptor<Drop>(
+            sortBy: [SortDescriptor(\Drop.timestamp, order: .reverse)]
+        )
+        descriptor.fetchLimit = Persistence.maxFetchedDrops
+        _drops = Query(descriptor)
+    }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -64,7 +71,11 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             StatCard(value: "\(drops.count)", label: "TOTAL")
             StatCard(value: "\(drops.todayCount)", label: "TODAY")
-            StatCard(value: "\(drops.streakDays)d", label: "STREAK")
+            StatCard(
+                value: "\(drops.streakDays)d",
+                label: "STREAK",
+                subtitle: drops.hasDropToday ? nil : "last active day"
+            )
         }
         .frame(height: 80)
     }
@@ -126,12 +137,7 @@ struct DashboardView: View {
 
     private func delete(_ drop: Drop) {
         withAnimation(.easeOut(duration: 0.15)) {
-            modelContext.delete(drop)
-            do {
-                try modelContext.save()
-            } catch {
-                CraneAlert.presentSaveFailed(error)
-            }
+            modelContext.deleteDrop(drop)
         }
     }
 
@@ -143,6 +149,7 @@ struct DashboardView: View {
 private struct StatCard: View {
     let value: String
     let label: String
+    var subtitle: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -155,13 +162,26 @@ private struct StatCard: View {
                 .font(CraneFont.ui(10, weight: .medium))
                 .tracking(0.6)
                 .foregroundStyle(Color.craneInkTertiary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(CraneFont.ui(9, weight: .medium))
+                    .foregroundStyle(Color.craneInkTertiary.opacity(0.85))
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .craneCard()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label), \(value)")
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        if let subtitle {
+            return "\(label), \(value), \(subtitle)"
+        }
+        return "\(label), \(value)"
     }
 }
 

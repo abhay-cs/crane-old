@@ -15,6 +15,12 @@ import SwiftData
 
 enum Persistence {
 
+    /// Maximum characters saved per drop (capture + paste guard).
+    static let maxDropTextLength = 8_192
+
+    /// Upper bound for `@Query` fetches in dashboard and history.
+    static let maxFetchedDrops = 5_000
+
     /// Lazily-built container shared by every surface in the app. Built
     /// once on first access (which is the main actor in practice, since
     /// both the `MenuBarExtra` scene and `OverlayController.attach` run
@@ -25,6 +31,9 @@ enum Persistence {
     /// fallback is in use (drops are lost on quit).
     static private(set) var isEphemeralStore = false
 
+    /// Path to the most recent archived corrupt store, if recovery ran.
+    static private(set) var lastArchivedStorePath: String?
+
     /// Human-readable store location for support / alert copy.
     static var storeDirectoryPath: String {
         applicationSupportDirectory().path(percentEncoded: false)
@@ -33,9 +42,20 @@ enum Persistence {
     // MARK: - Container
 
     private static func openDiskContainer(config: ModelConfiguration) throws -> ModelContainer {
-        // Additive schema changes (new optional/defaulted fields) migrate
-        // automatically; an explicit plan is only needed for custom stages.
-        try ModelContainer(for: Drop.self, configurations: config)
+        try ModelContainer(
+            for: Drop.self,
+            migrationPlan: CraneMigrationPlan.self,
+            configurations: config
+        )
+    }
+
+    private static func openEphemeralContainer() throws -> ModelContainer {
+        let memory = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try ModelContainer(
+            for: Drop.self,
+            migrationPlan: CraneMigrationPlan.self,
+            configurations: memory
+        )
     }
 
     private static func makeContainer() -> ModelContainer {
@@ -45,7 +65,7 @@ enum Persistence {
 
         do {
             let container = try openDiskContainer(config: config)
-            migrateLegacyJSONIfNeeded(into: container.mainContext)
+            migrateLegacyJSONIfNeeded(into: container.mainContext, persistToDisk: true)
             return container
         } catch {
             let storeError = error
@@ -58,24 +78,23 @@ enum Persistence {
                 config: config,
                 originalError: storeError
             ) {
-                migrateLegacyJSONIfNeeded(into: recovered.mainContext)
+                migrateLegacyJSONIfNeeded(into: recovered.mainContext, persistToDisk: true)
                 return recovered
             }
 
-            // If the on-disk store is corrupt or unreadable, fall back to
-            // an in-memory container so the app still launches. The user's
-            // legacy `drops.json` (if any) is left in place so a later
-            // launch can retry the migration once the store is fixed.
             isEphemeralStore = true
-            let memory = ModelConfiguration(isStoredInMemoryOnly: true)
-            // swiftlint:disable:next force_try
-            let ephemeral = try! ModelContainer(for: Drop.self, configurations: memory)
-            migrateLegacyJSONIfNeeded(into: ephemeral.mainContext)
-            return ephemeral
+            do {
+                let ephemeral = try openEphemeralContainer()
+                // Session-only import; never rename drops.json while ephemeral.
+                migrateLegacyJSONIfNeeded(into: ephemeral.mainContext, persistToDisk: false)
+                return ephemeral
+            } catch {
+                fatalError("crane: unable to create in-memory SwiftData store: \(error)")
+            }
         }
     }
 
-    /// Deletes a broken on-disk store (and SQLite sidecars) and retries once.
+    /// Archives a broken on-disk store, then retries opening once.
     private static func attemptStoreRecovery(
         storeURL: URL,
         config: ModelConfiguration,
@@ -85,24 +104,50 @@ enum Persistence {
         print("crane: attempting store recovery after: \(originalError)")
         #endif
 
-        removeStoreFiles(at: storeURL)
+        lastArchivedStorePath = archiveBrokenStore(at: storeURL)?.path(percentEncoded: false)
 
         return try? openDiskContainer(config: config)
     }
 
-    private static func removeStoreFiles(at storeURL: URL) {
+    /// Moves store files into `crane.store.corrupt.<timestamp>/` before delete-retry.
+    @discardableResult
+    private static func archiveBrokenStore(at storeURL: URL) -> URL? {
         let fm = FileManager.default
+        let parent = storeURL.deletingLastPathComponent()
+        let stamp = Int(Date().timeIntervalSince1970)
+        let archiveDir = parent.appending(path: "crane.store.corrupt.\(stamp)", directoryHint: .isDirectory)
+
         let sidecars = ["", "-shm", "-wal"].map { suffix in
             URL(fileURLWithPath: storeURL.path(percentEncoded: false) + suffix)
         }
-        for url in sidecars {
-            try? fm.removeItem(at: url)
+
+        var movedAny = false
+        do {
+            try fm.createDirectory(at: archiveDir, withIntermediateDirectories: true)
+            for url in sidecars where fm.fileExists(atPath: url.path(percentEncoded: false)) {
+                let dest = archiveDir.appending(path: url.lastPathComponent)
+                if fm.fileExists(atPath: dest.path(percentEncoded: false)) {
+                    try fm.removeItem(at: dest)
+                }
+                try fm.moveItem(at: url, to: dest)
+                movedAny = true
+            }
+        } catch {
+            #if DEBUG
+            print("crane: failed to archive corrupt store: \(error)")
+            #endif
+            for url in sidecars {
+                try? fm.removeItem(at: url)
+            }
+            return nil
         }
+
+        return movedAny ? archiveDir : nil
     }
 
     // MARK: - Paths
 
-    private static func applicationSupportDirectory() -> URL {
+    static func applicationSupportDirectory() -> URL {
         let fm = FileManager.default
         let bundleID = Bundle.main.bundleIdentifier ?? "com.abhaycs.crane"
 
@@ -126,9 +171,7 @@ enum Persistence {
 
     // MARK: - Legacy JSON migration
 
-    /// Shape of the rows stored by the previous `DropsStore` JSON file —
-    /// kept here so the active `Drop` model can shed `Codable` and the
-    /// `drop_type` / `source_app` snake_case coding keys.
+    /// Shape of the rows stored by the previous `DropsStore` JSON file.
     private struct LegacyDrop: Decodable {
         let id: UUID
         let text: String
@@ -143,12 +186,12 @@ enum Persistence {
         }
     }
 
-    /// If a `drops.json` file from the JSON-backed era exists and the
-    /// SwiftData store has no rows yet, decode the JSON, insert each row,
-    /// and rename the file to `drops.json.migrated` so this never runs
-    /// twice. Best-effort: any failure leaves the JSON in place for a
-    /// retry on a future launch.
-    private static func migrateLegacyJSONIfNeeded(into context: ModelContext) {
+    /// Merges `drops.json` rows missing from SwiftData (by UUID). Renames the
+    /// JSON file only when every row is present and `persistToDisk` is true.
+    private static func migrateLegacyJSONIfNeeded(
+        into context: ModelContext,
+        persistToDisk: Bool
+    ) {
         let supportDir = applicationSupportDirectory()
         let jsonURL = supportDir
             .appending(path: "drops.json", directoryHint: .notDirectory)
@@ -159,38 +202,58 @@ enum Persistence {
             return
         }
 
-        // Only seed when the SwiftData store is empty, so deleting all
-        // drops in the UI and relaunching doesn't resurrect them.
-        let existingCount: Int
-        do {
-            existingCount = try context.fetchCount(FetchDescriptor<Drop>())
-        } catch {
-            return
-        }
-        guard existingCount == 0 else { return }
-
         do {
             let data = try Data(contentsOf: jsonURL)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let legacy = try decoder.decode([LegacyDrop].self, from: data)
+            guard !legacy.isEmpty else {
+                if persistToDisk {
+                    try? FileManager.default.moveItem(at: jsonURL, to: migratedURL)
+                }
+                return
+            }
+
+            let existingIDs = try fetchAllDropIDs(in: context)
+            var inserted = 0
 
             for row in legacy {
+                guard !existingIDs.contains(row.id) else { continue }
                 let type = DropType(rawValue: row.drop_type) ?? .thought
+                let text = String(row.text.prefix(maxDropTextLength))
                 context.insert(
                     Drop(
                         id: row.id,
-                        text: row.text,
+                        text: text,
                         dropType: type,
                         timestamp: row.timestamp,
                         sourceApp: row.sourceApp
                     )
                 )
+                inserted += 1
             }
-            try context.save()
-            try? FileManager.default.moveItem(at: jsonURL, to: migratedURL)
+
+            if inserted > 0 {
+                try context.save()
+            }
+
+            let idsAfterImport = try fetchAllDropIDs(in: context)
+            let allPresent = legacy.allSatisfy { idsAfterImport.contains($0.id) }
+
+            if allPresent && persistToDisk {
+                try? FileManager.default.moveItem(at: jsonURL, to: migratedURL)
+            }
         } catch {
             // Leave drops.json in place so a future launch can try again.
+            #if DEBUG
+            print("crane: legacy JSON migration failed: \(error)")
+            #endif
         }
+    }
+
+    private static func fetchAllDropIDs(in context: ModelContext) throws -> Set<UUID> {
+        let descriptor = FetchDescriptor<Drop>()
+        let drops = try context.fetch(descriptor)
+        return Set(drops.map(\.id))
     }
 }

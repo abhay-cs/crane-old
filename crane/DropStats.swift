@@ -21,6 +21,12 @@ extension Array where Element == Drop {
         }
     }
 
+    /// Whether at least one drop exists on the user's current calendar day.
+    var hasDropToday: Bool {
+        let cal = Calendar.current
+        return contains { cal.isDateInToday($0.timestamp) }
+    }
+
     /// Consecutive days with at least one drop, counting backward from
     /// today when today has activity, otherwise from the most recent
     /// active day (so yesterday’s run still shows until you miss a day).

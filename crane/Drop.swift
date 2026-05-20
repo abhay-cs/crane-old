@@ -31,6 +31,8 @@ final class Drop {
     var tags: [String] = []
     /// Set when tagging completes (including empty tag lists).
     var aiProcessedAt: Date? = nil
+    /// `true` when FM tagging was attempted but failed (non-provider-crash).
+    var aiTaggingFailed: Bool = false
 
     init(
         id: UUID = UUID(),
@@ -39,7 +41,8 @@ final class Drop {
         timestamp: Date = Date(),
         sourceApp: String? = nil,
         tags: [String] = [],
-        aiProcessedAt: Date? = nil
+        aiProcessedAt: Date? = nil,
+        aiTaggingFailed: Bool = false
     ) {
         self.id = id
         self.text = text
@@ -48,5 +51,6 @@ final class Drop {
         self.sourceApp = sourceApp
         self.tags = tags
         self.aiProcessedAt = aiProcessedAt
+        self.aiTaggingFailed = aiTaggingFailed
     }
 }

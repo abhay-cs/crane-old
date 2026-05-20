@@ -10,8 +10,7 @@ struct HistoryView: View {
     @Environment(OverlayController.self) private var controller
     @Environment(\.modelContext) private var modelContext
 
-    @Query(sort: \Drop.timestamp, order: .reverse)
-    private var drops: [Drop]
+    @Query private var drops: [Drop]
 
     @State private var search: String = ""
     @State private var debouncedSearch: String = ""
@@ -29,7 +28,16 @@ struct HistoryView: View {
             drop.text.lowercased().contains(q)
                 || drop.dropType.rawValue.lowercased().contains(q)
                 || drop.tags.contains { $0.lowercased().contains(q) }
+                || (drop.sourceApp?.lowercased().contains(q) ?? false)
         }
+    }
+
+    init() {
+        var descriptor = FetchDescriptor<Drop>(
+            sortBy: [SortDescriptor(\Drop.timestamp, order: .reverse)]
+        )
+        descriptor.fetchLimit = Persistence.maxFetchedDrops
+        _drops = Query(descriptor)
     }
 
     var body: some View {
@@ -115,7 +123,7 @@ struct HistoryView: View {
                     .tint(CraneColor.accent)
                     .disableAutocorrection(true)
                     .accessibilityLabel("Search drops")
-                    .accessibilityHint("Filters by text, type, or tags")
+                    .accessibilityHint("Filters by text, type, tags, or source app")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -192,7 +200,7 @@ struct HistoryView: View {
                     .padding(.vertical, 8)
                 }
                 .onAppear { scrollToFocusedDrop(in: items, proxy: proxy) }
-                .onChange(of: controller.scrollToDropID) { _, _ in
+                .onChange(of: controller.scrollToken) { _, _ in
                     scrollToFocusedDrop(in: items, proxy: proxy)
                 }
                 .onChange(of: items.count) { _, _ in
@@ -208,12 +216,7 @@ struct HistoryView: View {
 
     private func delete(_ drop: Drop) {
         withAnimation(.easeOut(duration: 0.15)) {
-            modelContext.delete(drop)
-            do {
-                try modelContext.save()
-            } catch {
-                CraneAlert.presentSaveFailed(error)
-            }
+            modelContext.deleteDrop(drop)
         }
     }
 

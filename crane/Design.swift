@@ -2,10 +2,7 @@
 //  Design.swift
 //  crane
 //
-//  Shared design tokens for the Liquid Glass surfaces across the input bar,
-//  history view, and menu-bar dashboard. Keeping them here lets every
-//  surface share one motion language, one corner radius, and one edge
-//  highlight so the app feels like a single coordinated system.
+//  Shared design tokens: motion, metrics, surfaces, specular borders.
 //
 
 import SwiftUI
@@ -26,41 +23,145 @@ extension Animation {
 // MARK: - Metric tokens
 
 enum DesignMetrics {
-    /// Corner radius used by the input bar, history card, and dashboard card.
+    static let grid: CGFloat = 8
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 16
+    static let lg: CGFloat = 24
+
     static let surfaceCornerRadius: CGFloat = 22
+    static let cardCornerRadius: CGFloat = 16
+    static let controlCornerRadius: CGFloat = 10
+    static let rowCornerRadius: CGFloat = 8
+    static let chipCornerRadius: CGFloat = 10
+
+    /// Capture pill content height (single input row).
+    static let inputRowHeight: CGFloat = 40
+    /// Hint row below capture field.
+    static let hintRowHeight: CGFloat = 22
+    static let inputPillVerticalPadding: CGFloat = 12
+    static let inputPillHorizontalPadding: CGFloat = 18
+}
+
+// MARK: - Environment
+
+private struct CraneColorSchemeKey: EnvironmentKey {
+    static let defaultValue: ColorScheme = .dark
+}
+
+extension EnvironmentValues {
+    var craneColorScheme: ColorScheme {
+        get { self[CraneColorSchemeKey.self] }
+        set { self[CraneColorSchemeKey.self] = newValue }
+    }
 }
 
 // MARK: - Specular border
 
-/// The faint top-leading highlight that gives Liquid Glass surfaces their
-/// "edge light". Drawn as a 0.5pt linear-gradient stroke from a brighter
-/// white at the top-leading corner to almost transparent at the bottom-
-/// trailing corner. Pair with `.glassEffect(...)` on the same shape.
 struct SpecularBorder: ViewModifier {
     let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
-        content.overlay(
+        content.overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
-                        colors: [
-                            .white.opacity(0.22),
-                            .white.opacity(0.04)
-                        ],
+                        colors: specularColors,
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: 0.5
                 )
-        )
+        }
+    }
+
+    private var specularColors: [Color] {
+        if colorScheme == .dark {
+            return [Color.craneCream.opacity(0.22), Color.craneCream.opacity(0.04)]
+        }
+        return [Color.craneInk.opacity(0.12), Color.craneInk.opacity(0.03)]
     }
 }
 
 extension View {
-    /// Apply the standard Liquid Glass edge highlight to the receiver,
-    /// matching the rounded-rect shape used by the surface itself.
     func specularBorder(cornerRadius: CGFloat = DesignMetrics.surfaceCornerRadius) -> some View {
         modifier(SpecularBorder(cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Surface modifiers
+
+private struct CraneCardSurfaceModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(CraneColor.accentSoft(for: colorScheme))
+                    .background {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
+            }
+            .specularBorder(cornerRadius: cornerRadius)
+    }
+}
+
+extension View {
+    /// Primary overlay shell (input bar, history card). Material + surface tint + specular.
+    func craneOverlayShell(cornerRadius: CGFloat = DesignMetrics.surfaceCornerRadius) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.craneSurface.opacity(0.35))
+                .background(
+                    .regularMaterial,
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
+        }
+        .specularBorder(cornerRadius: cornerRadius)
+    }
+
+    /// Dashboard stat cards and count badges.
+    func craneCard(cornerRadius: CGFloat = DesignMetrics.cardCornerRadius) -> some View {
+        modifier(CraneCardSurfaceModifier(cornerRadius: cornerRadius))
+    }
+
+    /// Inset search field and hint key chips.
+    func craneInputRecess(cornerRadius: CGFloat = DesignMetrics.controlCornerRadius) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.craneInk.opacity(0.06))
+                .background {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.regularMaterial)
+                }
+        }
+    }
+
+    /// List row hover highlight.
+    func craneRowHighlight(isHighlighted: Bool, cornerRadius: CGFloat = DesignMetrics.rowCornerRadius) -> some View {
+        background {
+            if isHighlighted {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.craneThought.opacity(0.12))
+                    .background {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
+            }
+        }
+    }
+
+    /// Section divider between history header and list.
+    func craneDivider() -> some View {
+        overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.craneCream.opacity(0.07))
+                .frame(height: 0.5)
+                .allowsHitTesting(false)
+        }
     }
 }

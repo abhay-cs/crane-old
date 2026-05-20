@@ -2,15 +2,6 @@
 //  DashboardView.swift
 //  crane
 //
-//  The menu-bar popover. Shows at-a-glance stats (total, today, streak),
-//  a 14-day activity sparkline, a thoughts-vs-links breakdown, and the
-//  most recent drops. Footer carries the keyboard shortcuts that used
-//  to live in the system menu.
-//
-//  Hosted via `MenuBarExtra(.window)` in craneApp.swift. Macos already
-//  renders that popover with vibrancy, so this view doesn't need its
-//  own outer glass surface — only the inner cards do.
-//
 
 import SwiftUI
 import SwiftData
@@ -19,50 +10,38 @@ import Charts
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
 
-    // Single source of truth for every panel on this view. `@Query`
-    // re-renders the whole dashboard whenever a write happens anywhere
-    // (capture pill submits, history deletes), so totals, streaks, the
-    // sparkline, and the recent list stay in lockstep automatically.
     @Query(sort: \Drop.timestamp, order: .reverse)
     private var drops: [Drop]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            header
-
-            statCards
-
-            activitySection
-
-            typeBreakdownSection
-
-            // ─── Reserved slot for AI-dependent cards ──────────────────
-            //  Top Tags chips (from LLM-extracted tags) and the AI Daily
-            //  Digest card will land here once speech-to-text + summaries
-            //  ship. Layout is intentionally left empty so those can drop
-            //  in without disturbing the rest of the dashboard.
-            // ───────────────────────────────────────────────────────────
-
-            recentSection
-
-            Spacer(minLength: 0)
-
-            footer
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: DesignMetrics.md) {
+                header
+                statCards
+                activitySection
+                TopTagsSection(drops: drops) { tag in
+                    openOverlayHistory(search: tag)
+                }
+                recentSection
+                footer
+            }
+            .padding(DesignMetrics.md)
         }
-        .padding(16)
-        .frame(width: 360, height: 480, alignment: .topLeading)
+        .frame(width: 380, height: 520, alignment: .topLeading)
     }
-
-    // MARK: Header
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "drop.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-            Text("Crane")
-                .font(.system(size: 15, weight: .semibold))
+            Image("MenuBarIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(CraneColor.accent)
+                .accessibilityHidden(true)
+            Text("crane")
+                .font(CraneFont.display(18))
                 .tracking(-0.2)
+                .foregroundStyle(Color.craneInk)
 
             Spacer()
 
@@ -71,7 +50,7 @@ struct DashboardView: View {
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.craneInkTertiary)
                     .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
             }
@@ -81,70 +60,68 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: Stat cards
-
     private var statCards: some View {
         HStack(spacing: 10) {
-            StatCard(value: "\(drops.count)",       label: "TOTAL")
-            StatCard(value: "\(drops.todayCount)",  label: "TODAY")
+            StatCard(value: "\(drops.count)", label: "TOTAL")
+            StatCard(value: "\(drops.todayCount)", label: "TODAY")
             StatCard(value: "\(drops.streakDays)d", label: "STREAK")
         }
-        .frame(height: 76)
+        .frame(height: 80)
     }
-
-    // MARK: Activity
 
     private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            sectionHeader("Activity", trailing: "14 days")
-            ActivityChart(points: drops.dailyCounts(days: 14))
-                .frame(height: 56)
-        }
-    }
-
-    // MARK: Type breakdown
-
-    private var typeBreakdownSection: some View {
         let breakdown = drops.typeBreakdown
         return VStack(alignment: .leading, spacing: 8) {
+            CraneSectionHeader(title: "Activity", trailing: "14 days")
+            ActivityChart(points: drops.dailyCounts(days: 14))
+                .frame(height: 56)
             TypeBreakdownBar(thoughts: breakdown.thoughts, links: breakdown.links)
                 .frame(height: 6)
             HStack(spacing: 10) {
-                LegendChip(color: Color.accentColor,
-                           label: "thoughts",
-                           count: breakdown.thoughts)
-                LegendChip(color: Color.secondary,
-                           label: "links",
-                           count: breakdown.links)
+                LegendChip(color: Color.craneThought, label: "thoughts", count: breakdown.thoughts)
+                LegendChip(color: Color.craneLink, label: "links", count: breakdown.links)
                 Spacer()
             }
         }
     }
 
-    // MARK: Recent
-
     private var recentSection: some View {
-        // `drops` is already newest-first thanks to `@Query(sort:order:)`,
-        // so taking the prefix gives the same result the old
-        // `store.recent(3)` did.
         VStack(alignment: .leading, spacing: 4) {
-            sectionHeader("Recent")
+            CraneSectionHeader(
+                title: "Recent",
+                trailingActionTitle: drops.isEmpty ? nil : "Open all",
+                trailingAction: drops.isEmpty ? nil : { openOverlayHistory(focusing: nil) }
+            )
             let items = Array(drops.prefix(3))
             if items.isEmpty {
-                Text("No drops yet. Press ⌘⇧Space to capture one.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
-                    .padding(.vertical, 6)
+                EmptyStateView(
+                    symbol: "tray",
+                    message: "No drops yet. Capture a thought or link to see it here.",
+                    primaryAction: { AppDelegate.shared?.showOverlay() }
+                )
             } else {
                 VStack(spacing: 2) {
                     ForEach(items) { drop in
-                        DropRow(drop: drop, onDelete: { delete(drop) })
+                        DropRow(drop: drop, style: .compact, onDelete: { delete(drop) })
                             .contentShape(Rectangle())
                             .onTapGesture { openOverlayHistory(focusing: drop.id) }
                     }
                 }
             }
         }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 0) {
+            FooterButton(shortcut: "⌘⇧Space", label: "New Drop") {
+                AppDelegate.shared?.showOverlay()
+            }
+            Spacer()
+            FooterButton(shortcut: "⌘Q", label: "Quit") {
+                NSApp.terminate(nil)
+            }
+        }
+        .padding(.top, 4)
     }
 
     private func delete(_ drop: Drop) {
@@ -158,43 +135,10 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: Footer
-
-    private var footer: some View {
-        HStack(spacing: 0) {
-            FooterButton(shortcut: "⌘⇧Space", label: "New Drop") {
-                AppDelegate.shared?.showOverlay()
-            }
-            Spacer()
-            FooterButton(shortcut: "⌘Q", label: "Quit") {
-                NSApp.terminate(nil)
-            }
-        }
-    }
-
-    // MARK: Helpers
-
-    private func sectionHeader(_ title: String, trailing: String? = nil) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.4)
-                .foregroundStyle(.secondary)
-            Spacer()
-            if let trailing {
-                Text(trailing)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    private func openOverlayHistory(focusing dropID: UUID?) {
-        AppDelegate.shared?.showOverlayHistory(focusing: dropID)
+    private func openOverlayHistory(focusing dropID: UUID? = nil, search: String? = nil) {
+        AppDelegate.shared?.showOverlayHistory(focusing: dropID, search: search)
     }
 }
-
-// MARK: - StatCard
 
 private struct StatCard: View {
     let value: String
@@ -203,29 +147,23 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
-                .foregroundStyle(.primary)
+                .font(CraneFont.display(32))
+                .foregroundStyle(Color.craneInk)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(CraneFont.ui(10, weight: .medium))
                 .tracking(0.6)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .glassEffect(
-            .regular.tint(Color.accentColor.opacity(0.06)),
-            in: .rect(cornerRadius: 16, style: .continuous)
-        )
-        .specularBorder(cornerRadius: 16)
+        .craneCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label), \(value)")
     }
 }
-
-// MARK: - ActivityChart
 
 private struct ActivityChart: View {
     let points: [(date: Date, count: Int)]
@@ -237,7 +175,7 @@ private struct ActivityChart: View {
                     x: .value("Day", point.date, unit: .day),
                     y: .value("Count", point.count)
                 )
-                .foregroundStyle(Color.accentColor.opacity(0.85))
+                .foregroundStyle(CraneColor.accent.opacity(0.85))
                 .cornerRadius(2)
             }
         }
@@ -248,8 +186,6 @@ private struct ActivityChart: View {
         }
     }
 }
-
-// MARK: - TypeBreakdownBar
 
 private struct TypeBreakdownBar: View {
     let thoughts: Int
@@ -264,19 +200,17 @@ private struct TypeBreakdownBar: View {
         GeometryReader { proxy in
             HStack(spacing: 2) {
                 Capsule()
-                    .fill(Color.accentColor.opacity(0.85))
+                    .fill(Color.craneThought.opacity(0.85))
                     .frame(width: proxy.size.width * (CGFloat(thoughts) / total))
                 Capsule()
-                    .fill(Color.secondary.opacity(0.6))
+                    .fill(Color.craneLink.opacity(0.85))
                     .frame(width: max(0, proxy.size.width * (CGFloat(links) / total) - 2))
             }
         }
         .clipShape(Capsule())
-        .background(Capsule().fill(.quaternary.opacity(0.4)))
+        .background(Capsule().fill(Color.craneInk.opacity(0.06)))
     }
 }
-
-// MARK: - LegendChip
 
 private struct LegendChip: View {
     let color: Color
@@ -289,16 +223,14 @@ private struct LegendChip: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(label)
-                .font(.system(size: 11, weight: .regular))
-                .foregroundStyle(.secondary)
+                .font(CraneFont.ui(11))
+                .foregroundStyle(Color.craneInkSecondary)
             Text("\(count)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.primary)
+                .font(CraneFont.ui(11, weight: .semibold))
+                .foregroundStyle(Color.craneInk)
         }
     }
 }
-
-// MARK: - FooterButton
 
 private struct FooterButton: View {
     let shortcut: String
@@ -311,21 +243,14 @@ private struct FooterButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(shortcut)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .font(CraneFont.mono(10, weight: .medium))
+                    .foregroundStyle(Color.craneInkSecondary)
                     .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(
-                        .quaternary.opacity(0.6),
-                        in: RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .strokeBorder(.quaternary, lineWidth: 0.5)
-                    )
+                    .padding(.vertical, 2)
+                    .craneInputRecess(cornerRadius: DesignMetrics.xs + 2)
                 Text(label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(hovering ? .primary : .secondary)
+                    .font(CraneFont.ui(11))
+                    .foregroundStyle(hovering ? Color.craneInk : Color.craneInkSecondary)
             }
             .contentShape(Rectangle())
         }
@@ -334,8 +259,6 @@ private struct FooterButton: View {
         .animation(.craneSnappy, value: hovering)
     }
 }
-
-// MARK: - Preview
 
 #Preview("Dashboard") {
     DashboardView()

@@ -41,9 +41,9 @@ This is not a notes app. It's a *holding pen* between flow and proper capture. T
 
 ## What it does
 
-- **⌘⇧Space, anywhere.** A 620×88pt panel (64pt capture pill + padding) drops in at the upper third of the active screen. The text field is already focused.
+- **⌘⇧Space, anywhere.** A 620×116pt panel (two-row capture pill + padding) drops in at the upper third of the active screen. The text field is already focused.
 - **Type → Enter.** The drop is persisted. Pill dismisses with a quick checkmark blip.
-- **⌘L toggles "link" mode.** A `LINK` badge appears; the URL is parsed and rendered as a clickable link in history.
+- **⌘L toggles "link" mode.** A Thought / Link segment control appears; the URL is parsed and rendered as a clickable link in history.
 - **⌘H opens history.** The same panel grows downward into a searchable list of every drop, newest-first, with per-row delete on hover.
 - **Esc** dismisses the capture pill; in history, Esc returns to the pill (⌘⇧Space toggles the panel from anywhere).
 - **Menu-bar dashboard** (the drop-shaped tray icon) gives you a glance at how the holding pen is doing: TOTAL / TODAY / STREAK cards, a 14-day activity sparkline, a thoughts-vs-links bar, and the three most recent drops.
@@ -79,6 +79,7 @@ There's no release artifact yet; building from source is the supported path.
 | Capture pill | ⌘H | Switch to history view |
 | Capture pill | Esc | Dismiss |
 | Capture pill or history | ⌘Q | Quit |
+| History | ⌘F | Focus search |
 | History | ⌫ on a row's × button | Delete that drop (with confirmation) |
 | History | Esc | Back to capture pill (Esc again dismisses) |
 | Menu-bar window | ⌘Q | Quit |
@@ -88,6 +89,8 @@ The global combo is registered via Carbon's `RegisterEventHotKey`, which works i
 ---
 
 ## Architecture
+
+Full diagrams (context, layers, data flow, AI pipeline, module map): **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ```
 craneApp (SwiftUI scene + MenuBarExtra)
@@ -103,7 +106,7 @@ craneApp (SwiftUI scene + MenuBarExtra)
     └── DashboardView (menu-bar popover)
 ```
 
-The capture pill and history list live inside the **same** borderless `NSPanel`, not separate windows. Switching between views animates the panel's frame downward from 620×88 (pill) to 620×480 (history) while the SwiftUI hierarchy cross-fades. That's why `OverlayController.applySize(for:animated:)` anchors to the top edge — so the pill stays put as the panel grows down into the list.
+The capture pill and history list live inside the **same** borderless `NSPanel`, not separate windows. Switching between views animates the panel's frame downward from 620×116 (pill) to 620×480 (history) while the SwiftUI hierarchy cross-fades. That's why `OverlayController.applySize(for:animated:)` anchors to the top edge — so the pill stays put as the panel grows down into the list.
 
 The menu-bar dashboard and the overlay panel point to **the same shared `ModelContainer`** (`Persistence.container`). That single source of truth is why a drop captured via ⌘⇧Space lights up the dashboard's TOTAL/TODAY/STREAK numbers and the recent list **live** — both surfaces consume drops via `@Query`.
 
@@ -123,7 +126,12 @@ The menu-bar dashboard and the overlay panel point to **the same shared `ModelCo
 | `Drop.swift` | `@Model final class Drop` — id (UUID), text, dropType, timestamp, sourceApp. |
 | `Persistence.swift` | Single shared `ModelContainer` + one-time JSON-store migration. |
 | `DropStats.swift` | `[Drop]` extension powering the dashboard's `todayCount`, `streakDays`, `dailyCounts(days:)`, `typeBreakdown`. |
-| `Design.swift` | All shared design tokens: motion, corner radius, specular border. |
+| `Design.swift` | Motion, spacing, surface modifiers, specular border. |
+| `CraneColors.swift` | Brand color tokens (`CraneInk`, `CraneCream`, `CraneThought`, `CraneLink`, …). |
+| `CraneTypography.swift` | Instrument Serif + Geist + Geist Mono text styles. |
+| `CraneButtonStyles.swift` | Primary / secondary button styles. |
+| `CraneSectionHeader.swift` | Shared dashboard / history section headers. |
+| `Fonts/` | Bundled Instrument Serif and Geist font files. |
 | `CraneAlert.swift` | AppKit alerts for save failures, bad links, ephemeral store, hotkey registration. |
 | `Drop+Link.swift` | Link normalization (`https://` prefix) and validation helpers. |
 | `CraneSchema.swift` | SwiftData `CraneSchemaV1` + `CraneMigrationPlan` for forward-compatible migrations. |
@@ -133,59 +141,62 @@ The menu-bar dashboard and the overlay panel point to **the same shared `ModelCo
 
 ## Design system
 
-crane is built to feel like *one* coordinated surface, not a bag of views. Three shared tokens carry that: one motion language, one corner radius, one edge highlight. All three live in `Design.swift`.
+crane shares the landing page brand: **electric blue** (`#2400FF`), **cream** (`#F7E6C8`), and an ink ladder that adapts to light/dark. Tokens live in `Design.swift`, `CraneColors.swift`, `CraneTypography.swift`, and `Assets.xcassets`.
+
+### Color (adaptive)
+
+| Asset | Light | Dark | Use |
+|---|---|---|---|
+| `CraneInk` | Near-black | Warm off-white | Body text, capture field |
+| `CraneInkSecondary` | Muted gray | ~62% cream | Section labels, footer |
+| `CraneInkTertiary` | Lighter gray | ~36% cream | Hints, meta, empty states |
+| `CraneCream` | `#F7E6C8` | same | Specular edges, tag fills |
+| `CraneSurface` | Elevated white | `#0E0E18` | Tint under `.regularMaterial` |
+| `CraneThought` | Purple-gray | Lavender | Thought icons, chart segment |
+| `CraneLink` | Blue | Sky blue | Links, chart segment |
+| `AccentColor` | `#2400FF` | same | Actions, chart bars, mode segment |
+
+Semantic colors replace the old `.primary` / `.secondary` ladder on branded surfaces. `Color.accentColor` remains the system accent hook.
 
 ### Motion
 
 | Token | Curve | When |
 |---|---|---|
-| `Animation.craneSpring` | `spring(response: 0.35, dampingFraction: 0.82)` | Big transitions: input ⇄ history, panel resize. |
-| `Animation.craneSnappy` | `spring(response: 0.22, dampingFraction: 0.86)` | Hover, press, link-mode badge, save checkmark — fast and confident. |
-| `Animation.craneSubtle` | `easeInOut(duration: 0.18)` | Plain opacity fades. |
-
-Two springs, not five. Anything bigger than a hover uses `craneSpring`; anything smaller uses `craneSnappy`. If a third spring is ever tempting, it's probably the wrong scale somewhere else.
+| `Animation.craneSpring` | `spring(0.35, 0.82)` | Input ⇄ history, panel resize |
+| `Animation.craneSnappy` | `spring(0.22, 0.86)` | Hover, mode segment, save flash |
+| `Animation.craneSubtle` | `easeInOut(0.18s)` | Opacity fades |
 
 ### Surfaces
 
-| Surface | Material | Rationale |
+| Modifier | Material | Notes |
 |---|---|---|
-| Capture pill (`DropInputBar`) | `.regularMaterial` in a `RoundedRectangle(cornerRadius: 22)` | Hosts a focused `TextField`. macOS 26 Liquid Glass paints a soft focus halo around any `.glassEffect()` surface containing a focused descendant in the key window, and there is no public API to opt out. We trade the dynamic Liquid Glass for `NSVisualEffectView`'s `.regularMaterial`, which looks 95% the same and never haloes. |
-| History card (`HistoryView`) | `.regularMaterial` in a `RoundedRectangle(cornerRadius: 22)` | Same reason — hosts the focused search field. |
-| Search field (inner) | `.regularMaterial` + a 6%-tinted overlay | Subtle visual recess, no halo. |
-| Dashboard `StatCard` | `.glassEffect(.regular.tint(accent at 6%))` in `RoundedRectangle(cornerRadius: 16)` | No focused descendant — Liquid Glass is safe here, and the dynamic ambient sampling looks great over the dashboard's blurred backdrop. |
-| `DropRow` (hover) | `.glassEffect(.regular.tint(accent at 8%))` in `RoundedRectangle(cornerRadius: 8)` | Tiny lit-up feel on hover; transient, never focused. |
+| `.craneOverlayShell()` | `.regularMaterial` + `CraneSurface` tint + specular | Capture pill, history card (hosts focused fields — **no** Liquid Glass) |
+| `.craneCard()` | `.regularMaterial` + accent soft fill | Dashboard stat cards, count badges |
+| `.craneInputRecess()` | `.regularMaterial` + ink 6% | Search field, shortcut keys |
+| `.craneRowHighlight()` | `.regularMaterial` + `CraneThought` 12% | List row hover |
 
-**Corner radius:** `DesignMetrics.surfaceCornerRadius = 22` for primary surfaces (pill, history card). 16 for stat cards, 10 for the inner search pill, 8 for row hover, 4 for hint chips and the LINK badge. Always `.continuous` — never `.circular` — because continuous corners look right at every scale.
+**Corner radii:** 22 (shell), 16 (cards), 10 (controls/chips), 8 (rows). All `.continuous`.
 
-**Specular border:** every primary surface gets `.specularBorder(...)`, a 0.5pt linear-gradient stroke from white-at-22% in the top-leading corner to white-at-4% bottom-trailing. It gives the surface a felt edge without an outline — the trick is that the gradient is dimmer than the material itself almost everywhere, so it reads as a *highlight* on the lit side of glass rather than a *border*.
-
-**No drop shadows.** We tried `.shadow(radius: 30, y: 16)` and it got clipped at the panel boundary, leaving a visible rounded rectangle around the pill. The material + specular border carry the depth on their own.
+**Specular border:** cream gradient (dark) or ink gradient (light) at 0.5pt — reads as edge light, not outline. **No drop shadows.**
 
 ### Typography
 
-A single SF system stack, six scale steps, three weights. Tracking is set on the larger sizes only.
-
-| Role | Size / weight | Tracking | Where |
+| Role | Font | Size | Where |
 |---|---|---|---|
-| Capture input | 24 regular | −0.2 | The pill itself (`DropInputBar` `TextField`). |
-| Pill icon | 20 medium | — | `square.and.pencil` / `link` / checkmark. |
-| Section title | 15 semibold | −0.2 | "Your Drops", "Crane" header. |
-| Pill icon (back) | 13 medium | — | History back arrow. |
-| Body | 13 regular | — | `DropRow` text, search field. |
-| Search icon / row icon | 12 medium | — | Magnifying glass, link/thought leading icons in rows. |
-| Inline meta | 11 medium | — | Drop count badge, relative time. |
-| Inline meta (regular) | 11 regular | — | Hint chip labels ("save", "dismiss", "history"). |
-| Inline meta (semibold) | 11 semibold | 0.4 | Section headers ("Activity", "Recent"). |
-| Stat number | 28 semibold (`.rounded`) | — | Dashboard TOTAL / TODAY / STREAK. |
-| Caps label | 10 medium | 0.6 | "TOTAL" / "TODAY" / "STREAK", LINK badge, footer shortcuts. |
+| Capture input | Instrument Serif | 26 | `DropInputBar` |
+| Display title | Instrument Serif | 18–20 | "crane", "Your Drops" |
+| Stat numbers | Instrument Serif | 32 | Dashboard cards |
+| UI body | Geist | 11–13 | Rows, search, tags |
+| Shortcuts | Geist Mono | 10–11 | Hint row, footer |
+| Caps labels | Geist Medium | 10 (+0.6 tracking) | TOTAL / TODAY / STREAK |
 
-Three principles fall out of the table:
+Fonts are bundled under `crane/Fonts/` (Instrument Serif, Geist, Geist Mono). Use `CraneFont.display(_:)`, `CraneFont.ui(_:weight:)`, or `.craneText(.body)`.
 
-1. **Tighten tracking as size grows.** Anything 15pt or larger gets `−0.2` to feel intentional. Anything 10pt with an all-caps label gets `+0.6` because tiny letterforms need air.
-2. **Weight, not color, carries hierarchy on text.** Most labels stay at `regular` or `medium`; `semibold` is reserved for headings and stat numbers; `bold` is unused.
-3. **The pill's 24pt input is the only place anything gets large.** It's the single moment of "this is where you type" — every other surface stays quiet.
+### Layout
 
-Foreground style follows SwiftUI's semantic ladder: `.primary` for the input and stat numbers, `.secondary` for headings and chip text, `.tertiary` for relative time, hint labels, and empty-state copy. `.accentColor` shows up only on the LINK badge, the save checkmark, the sparkline bars, and the thoughts color of the type-breakdown bar.
+- **Capture pill:** two rows (input + hints), panel **620×116**.
+- **Dashboard:** scrollable **380×520** popover.
+- **History:** date sections (Today / Yesterday / …) when not searching.
 
 ---
 
@@ -213,7 +224,7 @@ If a `drops.json` from the pre-SwiftData era exists in the same directory, `Pers
 
 These are slots the current code intentionally leaves open for, not promises:
 
-- **AI-extracted tags + daily digest.** `DashboardView` has a documented empty slot between the type-breakdown and the recent list, sized for a tag-chip row and a digest card. The plan is to extract tags from drops with an LLM (locally, ideally) and surface them so the holding pen becomes self-organising over time.
+- **AI daily digest card.** Tags ship via on-device FM; a digest summary card in the dashboard is still TBD.
 - **Voice capture.** Push-to-talk via the same global combo, dictation into the same pill.
 - **Source app attribution in history.** `Drop.sourceApp` is recorded at capture time; richer “captured from Figma” UI in rows is still TBD.
 - **Per-drop tagging UI.** Once tags exist, a chip-row inside `DropRow` for filtering history.

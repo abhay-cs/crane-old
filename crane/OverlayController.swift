@@ -25,7 +25,8 @@ final class OverlayController {
     /// Logical sizes. Input panel hugs the 64pt capture pill with 12pt of
     /// transparent padding on each side; history keeps the original 480pt
     /// height so the list has room to scroll.
-    static let inputSize  = NSSize(width: 620, height: 88)
+    /// Two-row capture pill: input row + hint row + padding.
+    static let inputSize  = NSSize(width: 620, height: 116)
     static let historySize = NSSize(width: 620, height: 480)
 
     /// Currently displayed view. Mutating this animates the panel resize.
@@ -39,6 +40,9 @@ final class OverlayController {
     /// Bumped on every dismiss so `DropInputBar` clears draft state even
     /// when Esc is handled at the panel level instead of SwiftUI.
     private(set) var inputResetToken = UUID()
+
+    /// When set, `HistoryView` pre-fills the search field (e.g. from a tag chip).
+    var historySearchQuery: String?
 
     /// Frontmost app name captured before the overlay takes key focus.
     private(set) var capturedSourceApp: String?
@@ -101,29 +105,38 @@ final class OverlayController {
             currentView = .input
         }
         scrollToDropID = nil
+        historySearchQuery = nil
         positionOnActiveScreen()
-        // orderFrontRegardless avoids needing app activation, since we run
-        // as an Accessory app (no Dock icon).
+        // Activate so the field editor shows a blinking insertion point in this
+        // key-only accessory panel (nonactivating panels won't animate the caret
+        // while another app is still "active").
+        NSApp.activate(ignoringOtherApps: true)
         panel.orderFrontRegardless()
-        panel.makeKey()
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeMain()
     }
 
     /// Show the history list, optionally scrolling to a specific drop.
-    func openHistory(focusing dropID: UUID? = nil) {
+    func openHistory(focusing dropID: UUID? = nil, search: String? = nil) {
         cancelAfterSaveDismiss()
         captureSourceApp()
         scrollToDropID = dropID
+        historySearchQuery = search?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if historySearchQuery?.isEmpty == true { historySearchQuery = nil }
         if currentView != .history {
             currentView = .history
         }
         positionOnActiveScreen()
+        NSApp.activate(ignoringOtherApps: true)
         panel.orderFrontRegardless()
-        panel.makeKey()
+        panel.makeKeyAndOrderFront(nil)
+        panel.makeMain()
     }
 
     func hide() {
         cancelAfterSaveDismiss()
         scrollToDropID = nil
+        historySearchQuery = nil
         capturedSourceApp = nil
         inputResetToken = UUID()
         panel.orderOut(nil)

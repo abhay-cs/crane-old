@@ -2,30 +2,44 @@
 //  DropRow.swift
 //  crane
 //
-//  Single-row presentation of a Drop. Shared by `HistoryView` (full list)
-//  and `DashboardView` (recent drops). Lives at top level so both can
-//  consume it without making it `internal` to a single file.
-//
 
 import SwiftUI
 
 struct DropRow: View {
+    enum Style {
+        case standard
+        case compact
+    }
+
     let drop: Drop
+    var style: Style = .standard
     let onDelete: () -> Void
 
     @State private var hovering = false
     @State private var confirmDelete = false
+    @FocusState private var isFocused: Bool
+
+    private var bodyLineLimit: Int { style == .compact ? 2 : 4 }
+    private var verticalPadding: CGFloat { style == .compact ? 6 : 10 }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: drop.dropType == .link ? "link" : "square.and.pencil")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(drop.dropType == .link ? Color.craneLink : Color.craneThought)
                 .frame(width: 14)
                 .padding(.top, 3)
 
             VStack(alignment: .leading, spacing: 2) {
                 textBody
+                if !drop.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(drop.tags.prefix(3), id: \.self) { tag in
+                            TagChip(label: tag, style: .compact)
+                        }
+                    }
+                    .padding(.top, 2)
+                }
                 HStack(spacing: 6) {
                     Text(relativeTime(drop.timestamp))
                     if let app = drop.sourceApp, !app.isEmpty {
@@ -33,8 +47,8 @@ struct DropRow: View {
                         Text(app)
                     }
                 }
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+                .font(CraneFont.ui(12))
+                .foregroundStyle(Color.craneInkTertiary)
                 .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -44,12 +58,12 @@ struct DropRow: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color.craneInkTertiary)
                     .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .opacity(hovering ? 1 : 0)
+            .opacity(hovering || isFocused ? 1 : 0.45)
             .help("Delete drop")
             .accessibilityLabel("Delete drop")
             .confirmationDialog(
@@ -64,20 +78,11 @@ struct DropRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background {
-            // Accent-tinted Liquid Glass when hovered; nothing otherwise.
-            // Gives the row a gentle, lit feel rather than the flat
-            // quaternary fill it used before.
-            if hovering {
-                Color.clear
-                    .glassEffect(
-                        .regular.tint(Color.accentColor.opacity(0.08)),
-                        in: .rect(cornerRadius: 8, style: .continuous)
-                    )
-            }
-        }
+        .padding(.vertical, verticalPadding)
+        .craneRowHighlight(isHighlighted: hovering)
         .contentShape(Rectangle())
+        .focusable()
+        .focused($isFocused)
         .onHover { hovering = $0 }
         .animation(.craneSnappy, value: hovering)
     }
@@ -86,16 +91,16 @@ struct DropRow: View {
     private var textBody: some View {
         if drop.dropType == .link, let url = Drop.linkURL(for: drop.text) {
             Link(drop.text, destination: url)
-                .font(.system(size: 13))
-                .foregroundStyle(Color.accentColor)
-                .lineLimit(3)
+                .font(CraneFont.ui(13))
+                .foregroundStyle(Color.craneLink)
+                .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         } else {
             Text(drop.text)
-                .font(.system(size: 13))
-                .foregroundStyle(.primary)
+                .font(CraneFont.ui(13))
+                .foregroundStyle(Color.craneInk)
                 .textSelection(.enabled)
-                .lineLimit(4)
+                .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         }
     }

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>crane logo directions — preview</title>
+  <style>
+    :root { --ink: #1a1a1a; --muted: #666; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f0e8;
+      color: var(--ink);
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.25rem; }
+    p.lead { color: var(--muted); margin: 0 0 2rem; max-width: 52ch; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 1rem; margin: 0 0 0.35rem; }
+    .card .desc { font-size: 0.85rem; color: var(--muted); margin: 0 0 1rem; line-height: 1.4; }
+    .row { display: flex; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; }
+    .row img { display: block; }
+    .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.35rem; }
+    .menubar-wrap {
+      background: #2a2a2a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .menubar-wrap img { filter: brightness(0) invert(1); }
+  </style>
+</head>
+<body>
+  <h1>crane logo directions</h1>
+  <p class="lead">Open this file in a browser. Cream on blue at 512px; menu bar marks use currentColor (shown white on dark chrome).</p>
+  <div class="grid" id="grid"></div>
+  <script>
+    const dirs = [
+      { folder: 'direction-a-neck-drop', title: 'A — Neck + drop', desc: 'Crane profile; beak dot is a captured thought.' },
+      { folder: 'direction-b-cr-hybrid', title: 'B — cr. hybrid', desc: 'Current wordmark + subtle neck; period = drop.' },
+      { folder: 'direction-c-origami', title: 'C — Origami', desc: 'Folded paper crane; thought tucked away.' },
+      { folder: 'direction-d-wingspan', title: 'D — Wingspan', desc: 'Abstract lift arc + drop at apex.' },
+    ];
+    document.getElementById('grid').innerHTML = dirs.map(function (d) {
+      return '<article class="card">' +
+        '<h2>' + d.title + '</h2>' +
+        '<p class="desc">' + d.desc + '</p>' +
+        '<div class="row">' +
+          '<div><div class="label">App 512</div>' +
+          '<img src="' + d.folder + '/app-512.svg" width="128" height="128" alt="' + d.title + ' app"/></div>' +
+          '<div><div class="label">Menu bar 16</div>' +
+          '<div class="menubar-wrap">' +
+          '<img src="' + d.folder + '/menubar-16.svg" width="16" height="16" alt="' + d.title + ' menubar"/>' +
+          '</div></div></div></article>';
+    }).join('');
+  </script>
+</body>
+</html>

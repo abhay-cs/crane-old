@@ -27,17 +27,26 @@ final class Drop {
     var timestamp: Date
     var sourceApp: String?
 
+    /// FM-extracted tags, populated asynchronously after save.
+    var tags: [String] = []
+    /// Set when tagging completes (including empty tag lists).
+    var aiProcessedAt: Date? = nil
+
     init(
         id: UUID = UUID(),
         text: String,
         dropType: DropType,
         timestamp: Date = Date(),
-        sourceApp: String? = nil
+        sourceApp: String? = nil,
+        tags: [String] = [],
+        aiProcessedAt: Date? = nil
     ) {
         self.id = id
         self.text = text
         self.dropType = dropType
         self.timestamp = timestamp
         self.sourceApp = sourceApp
+        self.tags = tags
+        self.aiProcessedAt = aiProcessedAt
     }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="crane logo direction D wingspan">
+  <defs>
+    <clipPath id="squircle-d">
+      <path d="M256 0c123.789 0 152.785 0 177.215 12.457 30.428 18.466 47.862 35.9 66.328 66.328C512 103.215 512 132.211 512 256s0 152.785-12.457 177.215c-18.466 30.428-35.9 47.862-66.328 66.328C408.785 512 379.789 512 256 512S103.215 512 78.785 499.543c-30.428-18.466-47.862-35.9-66.328-66.328C0 408.785 0 379.789 0 256S0 103.215 12.457 78.785c18.466-30.428 35.9-47.862 66.328-66.328C103.215 0 132.211 0 256 0z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#squircle-d)">
+    <rect width="512" height="512" fill="#2400FF"/>
+    <path fill="none" stroke="#F7E6C8" stroke-width="32" stroke-linecap="round" d="M96 300q160-220 320 0"/>
+    <path fill="none" stroke="#F7E6C8" stroke-width="28" stroke-linecap="round" d="M256 300v100"/>
+    <circle cx="256" cy="108" r="22" fill="#F7E6C8"/>
+    <path fill="none" stroke="#F7E6C8" stroke-width="12" stroke-linecap="round" opacity="0.35" d="M128 320q128-180 256 0"/>
+  </g>
+</svg>

@@ -2,13 +2,6 @@
 //  HistoryView.swift
 //  crane
 //
-//  Searchable list of saved drops with per-row delete. Mirrors the React
-//  HistoryView.tsx, including:
-//
-//   - text/type search filter
-//   - relative-time formatting ("just now", "Nm ago", …)
-//   - "back" button + Esc to return to the input bar
-//
 
 import SwiftUI
 import SwiftData
@@ -17,21 +10,25 @@ struct HistoryView: View {
     @Environment(OverlayController.self) private var controller
     @Environment(\.modelContext) private var modelContext
 
-    // SwiftData fetches the list sorted newest-first so we don't need to
-    // reverse manually; the view re-renders automatically when the
-    // dashboard or the input bar mutate the store.
     @Query(sort: \Drop.timestamp, order: .reverse)
     private var drops: [Drop]
 
     @State private var search: String = ""
+    @State private var debouncedSearch: String = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var searchFocused: Bool
 
+    private var isSearching: Bool {
+        !debouncedSearch.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private var filtered: [Drop] {
-        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        let q = debouncedSearch.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return drops }
         return drops.filter { drop in
             drop.text.lowercased().contains(q)
                 || drop.dropType.rawValue.lowercased().contains(q)
+                || drop.tags.contains { $0.lowercased().contains(q) }
         }
     }
 
@@ -39,96 +36,102 @@ struct HistoryView: View {
         VStack(spacing: 0) {
             header
             searchField
-            Divider().opacity(0.4)
             listContent
         }
-        // See `DropInputBar` for why we use `.regularMaterial` instead of
-        // `.glassEffect`: Liquid Glass renders a focus halo around any
-        // glass surface that contains a focused text input in the key
-        // window, and there's no API to opt out.
-        .background(
-            .regularMaterial,
-            in: RoundedRectangle(cornerRadius: DesignMetrics.surfaceCornerRadius, style: .continuous)
-        )
-        .specularBorder(cornerRadius: DesignMetrics.surfaceCornerRadius)
+        .craneOverlayShell()
         .clipShape(RoundedRectangle(cornerRadius: DesignMetrics.surfaceCornerRadius, style: .continuous))
         .padding(12)
-        .background(
-            // Hidden cancel-action button so Esc returns to the input view
-            // without depending on the panel-level cancelOperation handler.
+        .background {
             Button("Back") { goBack() }
                 .keyboardShortcut(.cancelAction)
                 .opacity(0)
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
-        )
-        .onAppear { searchFocused = true }
+        }
+        .onAppear {
+            if let seed = controller.historySearchQuery, !seed.isEmpty {
+                search = seed
+                debouncedSearch = seed
+            }
+            searchFocused = true
+        }
+        .onChange(of: search) { _, newValue in
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = newValue
+            }
+        }
+        .onDisappear { searchDebounceTask?.cancel() }
     }
-
-    // MARK: Header
 
     private var header: some View {
         HStack(spacing: 10) {
             Button(action: goBack) {
                 Image(systemName: "arrow.left")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 26)
-                    .background(.quaternary.opacity(0.5),
-                                in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .foregroundStyle(Color.craneInkSecondary)
+                    .frame(width: 28, height: 28)
+                    .craneInputRecess(cornerRadius: DesignMetrics.rowCornerRadius)
             }
             .buttonStyle(.plain)
             .help("Back (esc)")
 
             Text("Your Drops")
-                .font(.system(size: 15, weight: .semibold))
+                .font(CraneFont.display(20))
                 .tracking(-0.2)
+                .foregroundStyle(Color.craneInk)
 
             Text("\(drops.count)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .font(CraneFont.ui(11, weight: .medium))
+                .foregroundStyle(Color.craneInkSecondary)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 1)
-                .background(.quaternary.opacity(0.5),
-                            in: Capsule(style: .continuous))
+                .padding(.vertical, 2)
+                .craneCard(cornerRadius: DesignMetrics.chipCornerRadius)
 
             Spacer()
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, DesignMetrics.md + 2)
         .padding(.top, 14)
         .padding(.bottom, 10)
     }
 
-    // MARK: Search
-
     private var searchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.tertiary)
-                .font(.system(size: 12, weight: .medium))
-            TextField("Search drops…", text: $search)
-                .textFieldStyle(.plain)
-                .focused($searchFocused)
-                .font(.system(size: 13))
-                .disableAutocorrection(true)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        // Match the card material; using `.regularMaterial` avoids the
-        // Liquid Glass focus halo around the focused search field.
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.06))
-                .background(
-                    .regularMaterial,
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
-        )
-        .padding(.horizontal, 18)
-        .padding(.bottom, 12)
-    }
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Search drops")
+                .font(CraneFont.ui(11, weight: .medium))
+                .foregroundStyle(Color.craneInkSecondary)
 
-    // MARK: List
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(Color.craneInkTertiary)
+                    .font(.system(size: 12, weight: .medium))
+                TextField("Filter by text, type, or tags…", text: $search)
+                    .textFieldStyle(.plain)
+                    .focused($searchFocused)
+                    .font(CraneFont.ui(13))
+                    .foregroundStyle(Color.craneInk)
+                    .tint(CraneColor.accent)
+                    .disableAutocorrection(true)
+                    .accessibilityLabel("Search drops")
+                    .accessibilityHint("Filters by text, type, or tags")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .craneInputRecess()
+        }
+        .padding(.horizontal, DesignMetrics.md + 2)
+        .padding(.bottom, 12)
+        .background {
+            Button("Focus search") { searchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+                .allowsHitTesting(false)
+        }
+    }
 
     @ViewBuilder
     private var listContent: some View {
@@ -136,23 +139,53 @@ struct HistoryView: View {
         if items.isEmpty {
             VStack {
                 Spacer()
-                Text(drops.isEmpty
-                     ? "No drops yet. Press ⌘⇧Space to capture your first thought!"
-                     : "No drops match your search.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.tertiary)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 36)
+                if drops.isEmpty {
+                    EmptyStateView(
+                        symbol: "tray",
+                        message: "No drops yet. Capture a thought or link to get started.",
+                        primaryAction: { AppDelegate.shared?.showOverlay() }
+                    )
+                    .padding(.horizontal, 24)
+                } else {
+                    EmptyStateView(
+                        symbol: "magnifyingglass",
+                        message: "No drops match your search.",
+                        primaryTitle: "Clear search",
+                        primaryAction: {
+                            searchDebounceTask?.cancel()
+                            search = ""
+                            debouncedSearch = ""
+                        }
+                    )
+                    .padding(.horizontal, 24)
+                }
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 2) {
-                        ForEach(items) { drop in
-                            DropRow(drop: drop, onDelete: { delete(drop) })
-                                .id(drop.id)
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        if isSearching {
+                            ForEach(items) { drop in
+                                DropRow(drop: drop, onDelete: { delete(drop) })
+                                    .id(drop.id)
+                            }
+                        } else {
+                            ForEach(items.groupedByDaySection(), id: \.title) { section in
+                                Text(section.title)
+                                    .font(CraneFont.ui(10, weight: .semibold))
+                                    .tracking(0.4)
+                                    .foregroundStyle(Color.craneInkTertiary)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 2)
+                                    .padding(.horizontal, 4)
+
+                                ForEach(section.drops) { drop in
+                                    DropRow(drop: drop, onDelete: { delete(drop) })
+                                        .id(drop.id)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 12)
@@ -168,8 +201,6 @@ struct HistoryView: View {
             }
         }
     }
-
-    // MARK: Actions
 
     private func goBack() {
         controller.currentView = .input
@@ -188,7 +219,7 @@ struct HistoryView: View {
 
     private func scrollToFocusedDrop(in items: [Drop], proxy: ScrollViewProxy) {
         guard let targetID = controller.scrollToDropID,
-            items.contains(where: { $0.id == targetID })
+              items.contains(where: { $0.id == targetID })
         else { return }
         DispatchQueue.main.async {
             withAnimation(.craneSnappy) {
@@ -197,8 +228,6 @@ struct HistoryView: View {
         }
     }
 }
-
-// MARK: - Preview
 
 #Preview("History") {
     let controller = OverlayController()

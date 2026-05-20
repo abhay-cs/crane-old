@@ -3,8 +3,6 @@
 //  crane
 //
 //  Borderless, transparent, floating NSPanel that hosts the SwiftUI overlay.
-//  Replaces the Tauri "main" window (transparent, decorations: false,
-//  alwaysOnTop: true, shadow: false, skipTaskbar: true).
 //
 
 import AppKit
@@ -15,12 +13,13 @@ import SwiftUI
 final class OverlayPanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    /// Lets the field editor install with a blinking insertion point.
+    override var canBecomeMain: Bool { true }
 
     init(initialSize: NSSize) {
         super.init(
             contentRect: NSRect(origin: .zero, size: initialSize),
-            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -38,17 +37,13 @@ final class OverlayPanel: NSPanel {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isReleasedWhenClosed = false
-        // Avoid the brief opaque flash when first ordering in.
+        becomesKeyOnlyIfNeeded = false
         invalidateShadow()
     }
 
-    /// Esc must close even when a TextField inside has focus and there's no
-    /// `.cancelAction` button to consume it — fall through to the action set
-    /// by the controller.
     override func cancelOperation(_ sender: Any?) {
         onCancel?()
     }
 
-    /// Closure invoked when the user hits Escape at the panel level.
     var onCancel: (() -> Void)?
 }

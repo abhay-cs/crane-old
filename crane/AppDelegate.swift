@@ -46,6 +46,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if Persistence.isEphemeralStore {
             CraneAlert.presentEphemeralStore()
         }
+
+        // Defer backfill so Apple Intelligence isn’t hit during launch alongside other services.
+        Task {
+            try? await Task.sleep(for: .seconds(8))
+            await MainActor.run {
+                AIJobQueue.shared.backfillUntaggedDrops(limit: 10)
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -68,7 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.show()
     }
 
-    func showOverlayHistory(focusing dropID: UUID? = nil) {
-        overlay.openHistory(focusing: dropID)
+    func showOverlayHistory(focusing dropID: UUID? = nil, search: String? = nil) {
+        overlay.openHistory(focusing: dropID, search: search)
     }
 }

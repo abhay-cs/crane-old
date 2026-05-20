@@ -21,10 +21,7 @@ struct craneApp: App {
         MenuBarExtra {
             DashboardView()
         } label: {
-            // Custom vector template asset (MenuBarIcon.imageset) — the
-            // "Cr" wordmark with the lowercase r drawn as a tower crane,
-            // matching the app icon. Rendered as a template so AppKit
-            // tints it for light/dark menu bars.
+            // Wingspan mark (MenuBarIcon.imageset). Template-tinted for the menu bar.
             Image("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)

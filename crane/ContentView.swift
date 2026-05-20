@@ -148,6 +148,11 @@ private struct DropInputBar: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !saving, !justSaved else { return }
 
+        if trimmed.count > Persistence.maxDropTextLength {
+            linkError = "Keep it under \(Persistence.maxDropTextLength) characters."
+            return
+        }
+
         let body: String
         if linkMode {
             guard Drop.isValidLinkText(trimmed) else {
@@ -177,6 +182,7 @@ private struct DropInputBar: View {
 
         AIJobQueue.shared.enqueue(dropID: drop.id)
 
+        saving = false
         justSaved = true
         withAnimation(.craneSubtle) { saveFlash = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -322,19 +328,20 @@ private struct HintChips: View {
     let linkMode: Bool
 
     var body: some View {
-        HStack(spacing: 6) {
-            HintKey("↵")
-            Text("save")
-            HintKey("⌘L")
-            Text(linkMode ? "thought" : "link")
-            HintKey("esc")
-            Text("dismiss")
-            HintKey("⌘H")
-            Text("history")
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                HintKey("↵")
+                Text("save")
+                HintKey("⌘L")
+                Text(linkMode ? "thought" : "link")
+                HintKey("esc")
+                Text("dismiss")
+                HintKey("⌘H")
+                Text("history")
+            }
+            .font(CraneFont.mono(11))
+            .foregroundStyle(Color.craneInkTertiary)
         }
-        .font(CraneFont.mono(11))
-        .foregroundStyle(Color.craneInkTertiary)
-        .lineLimit(1)
     }
 }
 

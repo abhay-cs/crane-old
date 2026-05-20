@@ -37,6 +37,9 @@ final class OverlayController {
     /// When set, `HistoryView` scrolls to this drop after appearing.
     var scrollToDropID: UUID?
 
+    /// Bumped whenever scroll should run (including repeated focus on the same drop).
+    private(set) var scrollToken = UUID()
+
     /// Bumped on every dismiss so `DropInputBar` clears draft state even
     /// when Esc is handled at the panel level instead of SwiftUI.
     private(set) var inputResetToken = UUID()
@@ -104,6 +107,8 @@ final class OverlayController {
         if currentView != .input {
             currentView = .input
         }
+        // Clear post-save checkmark / disabled state when reopening without hide.
+        inputResetToken = UUID()
         scrollToDropID = nil
         historySearchQuery = nil
         positionOnActiveScreen()
@@ -121,6 +126,7 @@ final class OverlayController {
         cancelAfterSaveDismiss()
         captureSourceApp()
         scrollToDropID = dropID
+        scrollToken = UUID()
         historySearchQuery = search?.trimmingCharacters(in: .whitespacesAndNewlines)
         if historySearchQuery?.isEmpty == true { historySearchQuery = nil }
         if currentView != .history {

@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project crane.xcodeproj \
+            -scheme crane \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO

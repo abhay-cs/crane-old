@@ -19,6 +19,13 @@ struct DropRow: View {
     @State private var confirmDelete = false
     @FocusState private var isFocused: Bool
 
+    private static let mediumDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
     private var bodyLineLimit: Int { style == .compact ? 2 : 4 }
     private var verticalPadding: CGFloat { style == .compact ? 6 : 10 }
 
@@ -39,6 +46,16 @@ struct DropRow: View {
                         }
                     }
                     .padding(.top, 2)
+                } else if drop.aiTaggingFailed {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .medium))
+                        Text("Tags unavailable")
+                            .font(CraneFont.ui(10, weight: .medium))
+                    }
+                    .foregroundStyle(Color.craneInkTertiary)
+                    .padding(.top, 2)
+                    .accessibilityLabel("Automatic tags could not be generated")
                 }
                 HStack(spacing: 6) {
                     Text(relativeTime(drop.timestamp))
@@ -115,9 +132,6 @@ struct DropRow: View {
         if hours < 24 { return "\(hours)h ago" }
         let days = hours / 24
         if days < 7 { return "\(days)d ago" }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
+        return Self.mediumDateFormatter.string(from: date)
     }
 }

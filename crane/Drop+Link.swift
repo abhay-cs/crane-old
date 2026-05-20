@@ -35,9 +35,10 @@ extension Drop {
   }
 
   /// URL suitable for `Link` in `DropRow`, using the same rules as save.
+  /// Normalizes legacy rows saved before link validation shipped.
   static func linkURL(for text: String) -> URL? {
     let normalized = normalizedLinkText(text)
-    guard let url = URL(string: normalized), url.scheme != nil else { return nil }
-    return url
+    guard isValidLinkText(text) else { return nil }
+    return URL(string: normalized)
   }
 }

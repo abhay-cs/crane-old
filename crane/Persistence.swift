@@ -252,8 +252,23 @@ enum Persistence {
     }
 
     private static func fetchAllDropIDs(in context: ModelContext) throws -> Set<UUID> {
-        let descriptor = FetchDescriptor<Drop>()
-        let drops = try context.fetch(descriptor)
-        return Set(drops.map(\.id))
+        var ids = Set<UUID>()
+        let batchSize = 500
+        var offset = 0
+
+        while true {
+            var descriptor = FetchDescriptor<Drop>()
+            descriptor.fetchLimit = batchSize
+            descriptor.fetchOffset = offset
+            let batch = try context.fetch(descriptor)
+            guard !batch.isEmpty else { break }
+            for drop in batch {
+                ids.insert(drop.id)
+            }
+            if batch.count < batchSize { break }
+            offset += batchSize
+        }
+
+        return ids
     }
 }

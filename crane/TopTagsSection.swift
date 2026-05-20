@@ -6,7 +6,9 @@
 import SwiftUI
 
 struct TopTagsSection: View {
-    let drops: [Drop]
+    let topTags: [(tag: String, count: Int)]
+    let hasAnyDrops: Bool
+    let untaggedInSample: Int
     let onTagSelected: (String) -> Void
 
     private var queue: AIJobQueue { AIJobQueue.shared }
@@ -15,23 +17,15 @@ struct TopTagsSection: View {
         FoundationModelsService.shared.tagAvailability
     }
 
-    private var topTags: [(tag: String, count: Int)] {
-        drops.topTags(limit: 8)
-    }
-
     private var isTagging: Bool {
         if case .available = availability {
-            return queue.isActive || drops.untaggedCount > 0
+            return queue.isActive || untaggedInSample > 0
         }
         return false
     }
 
-    private var hasTaggingFailures: Bool {
-        drops.contains { $0.aiTaggingFailed }
-    }
-
     var body: some View {
-        if !drops.isEmpty {
+        if hasAnyDrops {
             VStack(alignment: .leading, spacing: 8) {
                 CraneSectionHeader(
                     title: "Top Tags",
@@ -50,11 +44,6 @@ struct TopTagsSection: View {
                     AIUnavailableBanner(message: message)
                 } else if isTagging {
                     TagSkeletonRow()
-                } else if hasTaggingFailures {
-                    Text("Some drops couldn’t be tagged. New captures will retry when Apple Intelligence is available.")
-                        .font(CraneFont.ui(12))
-                        .foregroundStyle(Color.craneInkTertiary)
-                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("Tags appear on your thoughts after capture.")
                         .font(CraneFont.ui(12))

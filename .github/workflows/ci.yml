@@ -8,12 +8,23 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show Xcode and SDKs
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
       - name: Build
         run: |
+          SDK_LINE=$(xcodebuild -showsdks 2>/dev/null | grep -E 'macosx26\.4' | tail -1 || true)
+          if [ -z "$SDK_LINE" ]; then
+            echo "Skipping build: macOS 26.4 SDK not installed on this runner."
+            echo "Build locally with Xcode 26 on macOS Tahoe."
+            exit 0
+          fi
           xcodebuild \
             -project crane.xcodeproj \
             -scheme crane \

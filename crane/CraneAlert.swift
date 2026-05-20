@@ -65,4 +65,29 @@ enum CraneAlert {
     static func presentHotkeyRegistrationFailed() {
         presentLaunchWarnings(hotkeyFailed: true, ephemeralStore: false)
     }
+
+    @MainActor
+    static func presentInstanceLockFailed() {
+        let alert = NSAlert()
+        alert.messageText = "crane couldn’t start safely"
+        alert.informativeText =
+            "Another copy may still be running, or a stale lock file is blocking launch. "
+            + "Quit all crane processes, then delete:\n\n"
+            + Persistence.applicationSupportDirectory()
+                .appending(path: "crane.instance.lock", directoryHint: .notDirectory)
+                .path(percentEncoded: false)
+        alert.alertStyle = .critical
+        alert.runModal()
+    }
+
+    @MainActor
+    static func presentHotkeyLostAfterWake() {
+        let alert = NSAlert()
+        alert.messageText = "Global shortcut stopped working"
+        alert.informativeText =
+            "crane couldn’t re-register ⌘⇧Space after your Mac woke up. "
+            + "Use New Drop from the menu bar, or quit and reopen crane."
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
 }

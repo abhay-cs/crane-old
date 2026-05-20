@@ -20,7 +20,20 @@ enum SingleInstance {
         if acquireExclusiveLock() {
             return false
         }
-        return activateExistingInstance()
+        if activateExistingInstance() {
+            return true
+        }
+
+        // Stale lock with no peer: clear and retry once.
+        let url = lockFileURL()
+        clearStaleLockIfNeeded(at: url)
+        try? FileManager.default.removeItem(at: url)
+        if acquireExclusiveLock() {
+            return false
+        }
+
+        CraneAlert.presentInstanceLockFailed()
+        return true
     }
 
     /// Releases the lock file. Call from `applicationWillTerminate`.

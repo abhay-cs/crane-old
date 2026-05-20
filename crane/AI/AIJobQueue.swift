@@ -45,6 +45,16 @@ final class AIJobQueue {
         return false
     }
 
+    /// Whether any drops still need tagging (for coordinator backfill).
+    var hasUntaggedWork: Bool {
+        let context = Persistence.container.mainContext
+        var descriptor = FetchDescriptor<Drop>(
+            predicate: #Predicate { $0.aiProcessedAt == nil }
+        )
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor).first) != nil
+    }
+
     func enqueue(dropID: UUID) {
         guard case .available = service.tagAvailability else { return }
         guard !pending.contains(dropID) else { return }
@@ -144,7 +154,11 @@ final class AIJobQueue {
             drop.tags = []
             drop.aiTaggingFailed = true
             drop.aiProcessedAt = Date()
-            try? context.save()
+            do {
+                try context.save()
+            } catch {
+                FoundationModelsService.logFailure(error, dropID: dropID)
+            }
         }
     }
 

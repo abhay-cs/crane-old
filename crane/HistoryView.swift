@@ -15,7 +15,12 @@ struct HistoryView: View {
     @State private var search: String = ""
     @State private var debouncedSearch: String = ""
     @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var storeTotalCount = 0
     @FocusState private var searchFocused: Bool
+
+    private var isListCapped: Bool {
+        storeTotalCount > Persistence.maxFetchedDrops
+    }
 
     private var isSearching: Bool {
         !debouncedSearch.trimmingCharacters(in: .whitespaces).isEmpty
@@ -62,7 +67,9 @@ struct HistoryView: View {
                 debouncedSearch = seed
             }
             searchFocused = true
+            refreshStoreTotalCount()
         }
+        .onChange(of: drops.count) { _, _ in refreshStoreTotalCount() }
         .onChange(of: search) { _, newValue in
             searchDebounceTask?.cancel()
             searchDebounceTask = Task {
@@ -91,7 +98,7 @@ struct HistoryView: View {
                 .tracking(-0.2)
                 .foregroundStyle(Color.craneInk)
 
-            Text("\(drops.count)")
+            Text("\(storeTotalCount)")
                 .font(CraneFont.ui(11, weight: .medium))
                 .foregroundStyle(Color.craneInkSecondary)
                 .padding(.horizontal, 8)
@@ -195,6 +202,14 @@ struct HistoryView: View {
                                 }
                             }
                         }
+
+                        if isListCapped {
+                            Text(cappedListMessage)
+                                .font(CraneFont.ui(11))
+                                .foregroundStyle(Color.craneInkTertiary)
+                                .padding(.top, 8)
+                                .padding(.horizontal, 4)
+                        }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -210,6 +225,18 @@ struct HistoryView: View {
         }
     }
 
+    private var cappedListMessage: String {
+        let limit = Persistence.maxFetchedDrops
+        if isSearching {
+            return "Search covers your newest \(limit) drops."
+        }
+        return "Showing your newest \(limit) drops."
+    }
+
+    private func refreshStoreTotalCount() {
+        storeTotalCount = (try? modelContext.fetchCount(FetchDescriptor<Drop>())) ?? drops.count
+    }
+
     private func goBack() {
         controller.currentView = .input
     }
@@ -217,6 +244,7 @@ struct HistoryView: View {
     private func delete(_ drop: Drop) {
         withAnimation(.easeOut(duration: 0.15)) {
             modelContext.deleteDrop(drop)
+            refreshStoreTotalCount()
         }
     }
 

@@ -24,6 +24,7 @@ Living document for MVP / v1. Update status as work lands.
 | 2026-05-18 | First hardening pass: save errors, links, alerts, delete confirm, streak, icons, `.gitignore`, README/landing |
 | 2026-05-18 | **Must-fix pass:** `sourceApp` capture on open, post-save dismiss coalescing, single-instance guard, New Drop → `show()`, Esc in history → pill, `CraneSchemaV1` + migration plan, panel `visibleFrame` clamp |
 | 2026-05-20 | **Production polish pass:** ephemeral JSON safety, store archive recovery, idempotent JSON merge, wired `CraneMigrationPlan`, flock lock, wake hotkey re-register, AI queue/UX, capture limits, delete rollback, fetch caps, combined launch alert, CI, privacy manifest |
+| 2026-05-20 | **Re-audit fixes:** `DropStatistics` store-wide aggregates, `AITaggingCoordinator`, lock retry + alert, wake hotkey loss alert, history cap messaging, CI SDK gate |
 
 ---
 
@@ -54,7 +55,7 @@ Living document for MVP / v1. Update status as work lands.
 | P1-09 | Partial JSON migration can strand data | ✅ Fixed | Idempotent merge by UUID; JSON renamed only when all rows present on disk |
 | P1-10 | Hotkey dies after sleep / wake | ✅ Fixed | Re-register on `NSWorkspace.didWakeNotification` in `AppDelegate` |
 | P1-11 | Blocking modal alerts at launch | ✅ Fixed | `CraneAlert.presentLaunchWarnings` combines hotkey + ephemeral |
-| P1-12 | `@Query` loads all drops in dashboard + history | ✅ Fixed | `fetchLimit` 5000 via `Persistence.maxFetchedDrops`; full pagination deferred |
+| P1-12 | `@Query` loads all drops in dashboard + history | ✅ Fixed | Lists capped at 5000; stats via `DropStatistics` + `fetchCount`; history shows cap notice |
 | P1-13 | No maximum capture text length | ✅ Fixed | `Persistence.maxDropTextLength` (8192) enforced in `DropInputBar` |
 | P1-14 | Delete fails after `modelContext.delete` | ✅ Fixed | `ModelContext.deleteDrop` rolls back on save failure |
 | P1-15 | ⌘⇧Space still toggles (can hide while capturing) | 📋 Accepted | By design for global shortcut; “New Drop” uses `show()` only |
@@ -99,7 +100,7 @@ Living document for MVP / v1. Update status as work lands.
 | P3-01 | Hotkey remapping UI | 🚫 Won't fix (v1) | User-requested deferral |
 | P3-02 | Export / backup | 🚫 Won't fix (v1) | User-requested deferral |
 | P3-03 | iCloud sync | 🚫 Won't fix (v1) | Roadmap |
-| P3-04 | AI tags / daily digest | 🚫 Won't fix (v1) | Dashboard slot reserved |
+| P3-04 | AI tags / daily digest | ✅ Fixed (tags) / 🚫 (digest) | On-device tagging ships; digest UI deferred |
 | P3-05 | Voice capture | 🚫 Won't fix (v1) | Roadmap |
 | P3-06 | Per-drop tagging UI | 🚫 Won't fix (v1) | Roadmap |
 | P3-07 | Undo delete | ⏳ Open | Confirm dialog only for now |
@@ -149,6 +150,8 @@ Living document for MVP / v1. Update status as work lands.
 | `crane/ModelContext+DropDeletion.swift` | P1-14 delete rollback |
 | `crane/AppDelegate.swift` | P1-10 wake hotkey |
 | `crane/AI/AIJobQueue.swift` | AI queue stall + `aiTaggingFailed` |
+| `crane/AI/AITaggingCoordinator.swift` | FM availability → backfill on activate |
+| `crane/DropStatistics.swift` | Store-wide dashboard stats (uncapped totals) |
 | `crane/Drop+Link.swift` | P2-01/02 |
 | `crane/DropRow.swift` | P2-03, P3-15, tagging failure UI |
 | `crane/PrivacyInfo.xcprivacy` | P3-12 |

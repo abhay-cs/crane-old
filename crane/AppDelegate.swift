@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var overlay: OverlayController = OverlayController()
     private let hotkey = GlobalHotkey()
     private var wakeObserver: NSObjectProtocol?
+    private var hotkeyRegisteredSuccessfully = false
 
     // MARK: - NSApplicationDelegate
 
@@ -34,14 +35,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.attach(rootView: ContentView())
 
         let hotkeyOK = registerHotkey()
+        hotkeyRegisteredSuccessfully = hotkeyOK
 
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.registerHotkey()
+            self?.reregisterHotkeyAfterWake()
         }
+
+        AITaggingCoordinator.shared.startObserving()
 
         CraneAlert.presentLaunchWarnings(
             hotkeyFailed: !hotkeyOK,
@@ -60,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }
+        AITaggingCoordinator.shared.stopObserving()
         hotkey.unregister()
         SingleInstance.releaseLock()
     }
@@ -75,6 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.registerCommandShiftSpace { [weak self] in
             self?.toggleOverlay()
         }
+    }
+
+    private func reregisterHotkeyAfterWake() {
+        let ok = registerHotkey()
+        if hotkeyRegisteredSuccessfully, !ok {
+            CraneAlert.presentHotkeyLostAfterWake()
+        }
+        hotkeyRegisteredSuccessfully = ok
     }
 
     // MARK: - Public API (called from MenuBarExtra)

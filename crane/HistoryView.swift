@@ -9,6 +9,8 @@ import SwiftData
 struct HistoryView: View {
     @Environment(OverlayController.self) private var controller
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Query private var drops: [Drop]
 
@@ -83,27 +85,23 @@ struct HistoryView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Button(action: goBack) {
-                Image(systemName: "arrow.left")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.craneInkSecondary)
-                    .frame(width: 28, height: 28)
-                    .craneInputRecess(cornerRadius: DesignMetrics.rowCornerRadius)
-            }
-            .buttonStyle(.plain)
-            .help("Back (esc)")
+            CraneIconButton(
+                systemName: "arrow.left",
+                iconSize: 13,
+                usesRecess: true,
+                help: "Back (esc)",
+                accessibilityLabel: "Back",
+                action: goBack
+            )
 
-            Text("Your Drops")
+            Text("History")
                 .font(CraneFont.display(20))
                 .tracking(-0.2)
                 .foregroundStyle(Color.craneInk)
 
-            Text("\(storeTotalCount)")
-                .font(CraneFont.ui(11, weight: .medium))
+            Text("· \(storeTotalCount)")
+                .font(CraneFont.ui(13, weight: .medium))
                 .foregroundStyle(Color.craneInkSecondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .craneCard(cornerRadius: DesignMetrics.chipCornerRadius)
 
             Spacer()
         }
@@ -114,30 +112,61 @@ struct HistoryView: View {
 
     private var searchField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Search drops")
-                .font(CraneFont.ui(11, weight: .medium))
-                .foregroundStyle(Color.craneInkSecondary)
+            HStack {
+                Text("Search drops")
+                    .font(CraneFont.ui(13, weight: .medium))
+                    .foregroundStyle(Color.craneInkSecondary)
+
+                Spacer()
+
+                if isSearching {
+                    Text(searchResultsLabel)
+                        .font(CraneFont.ui(13))
+                        .foregroundStyle(Color.craneInkTertiary)
+                }
+            }
 
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.craneInkTertiary)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
+
                 TextField("Filter by text, type, or tags…", text: $search)
                     .textFieldStyle(.plain)
                     .focused($searchFocused)
-                    .font(CraneFont.ui(13))
+                    .font(CraneFont.ui(14))
                     .foregroundStyle(Color.craneInk)
                     .tint(CraneColor.accent)
                     .disableAutocorrection(true)
                     .accessibilityLabel("Search drops")
                     .accessibilityHint("Filters by text, type, tags, or source app")
+
+                if !search.isEmpty {
+                    CraneIconButton(
+                        systemName: "xmark.circle.fill",
+                        iconSize: 13,
+                        help: "Clear search",
+                        accessibilityLabel: "Clear search",
+                        action: clearSearch
+                    )
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .craneInputRecess()
+            .overlay {
+                RoundedRectangle(cornerRadius: DesignMetrics.controlCornerRadius, style: .continuous)
+                    .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: searchFocused ? 0.5 : 0)
+                    .animation(
+                        CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion),
+                        value: searchFocused
+                    )
+                    .allowsHitTesting(false)
+            }
         }
         .padding(.horizontal, DesignMetrics.md + 2)
         .padding(.bottom, 12)
+        .craneDivider()
         .background {
             Button("Focus search") { searchFocused = true }
                 .keyboardShortcut("f", modifiers: .command)
@@ -146,6 +175,11 @@ struct HistoryView: View {
                 .accessibilityHidden(true)
                 .allowsHitTesting(false)
         }
+    }
+
+    private var searchResultsLabel: String {
+        let count = filtered.count
+        return count == 1 ? "1 match" : "\(count) matches"
     }
 
     @ViewBuilder
@@ -157,20 +191,18 @@ struct HistoryView: View {
                 if drops.isEmpty {
                     EmptyStateView(
                         symbol: "tray",
-                        message: "No drops yet. Capture a thought or link to get started.",
+                        headline: "Nothing held yet.",
+                        message: "Capture a thought or link to get started.",
                         primaryAction: { AppDelegate.shared?.showOverlay() }
                     )
                     .padding(.horizontal, 24)
                 } else {
                     EmptyStateView(
                         symbol: "magnifyingglass",
-                        message: "No drops match your search.",
+                        headline: "No matches.",
+                        message: "Try a different search term.",
                         primaryTitle: "Clear search",
-                        primaryAction: {
-                            searchDebounceTask?.cancel()
-                            search = ""
-                            debouncedSearch = ""
-                        }
+                        primaryAction: clearSearch
                     )
                     .padding(.horizontal, 24)
                 }
@@ -183,21 +215,21 @@ struct HistoryView: View {
                     LazyVStack(alignment: .leading, spacing: 4) {
                         if isSearching {
                             ForEach(items) { drop in
-                                DropRow(drop: drop, onDelete: { delete(drop) })
+                                historyRow(for: drop)
                                     .id(drop.id)
                             }
                         } else {
                             ForEach(items.groupedByDaySection(), id: \.title) { section in
-                                Text(section.title)
-                                    .font(CraneFont.ui(10, weight: .semibold))
-                                    .tracking(0.4)
+                                Text(section.title.uppercased())
+                                    .font(CraneFont.ui(12, weight: .semibold))
+                                    .tracking(0.6)
                                     .foregroundStyle(Color.craneInkTertiary)
                                     .padding(.top, 8)
                                     .padding(.bottom, 2)
                                     .padding(.horizontal, 4)
 
                                 ForEach(section.drops) { drop in
-                                    DropRow(drop: drop, onDelete: { delete(drop) })
+                                    historyRow(for: drop)
                                         .id(drop.id)
                                 }
                             }
@@ -225,6 +257,15 @@ struct HistoryView: View {
         }
     }
 
+    private func historyRow(for drop: Drop) -> some View {
+        DropRow(
+            drop: drop,
+            inlineDeleteConfirmation: true,
+            isEmphasized: drop.id == controller.scrollToDropID,
+            onDelete: { delete(drop) }
+        )
+    }
+
     private var cappedListMessage: String {
         let limit = Persistence.maxFetchedDrops
         if isSearching {
@@ -237,12 +278,19 @@ struct HistoryView: View {
         storeTotalCount = (try? modelContext.fetchCount(FetchDescriptor<Drop>())) ?? drops.count
     }
 
+    private func clearSearch() {
+        searchDebounceTask?.cancel()
+        search = ""
+        debouncedSearch = ""
+    }
+
     private func goBack() {
+        controller.clearScrollHighlight()
         controller.currentView = .input
     }
 
     private func delete(_ drop: Drop) {
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAnimation(CraneMotion.adaptive(.easeOut(duration: 0.15), reduceMotion: reduceMotion)) {
             modelContext.deleteDrop(drop)
             refreshStoreTotalCount()
         }
@@ -253,9 +301,10 @@ struct HistoryView: View {
               items.contains(where: { $0.id == targetID })
         else { return }
         DispatchQueue.main.async {
-            withAnimation(.craneSnappy) {
+            withAnimation(CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion)) {
                 proxy.scrollTo(targetID, anchor: .center)
             }
+            controller.scheduleScrollHighlightClear()
         }
     }
 }

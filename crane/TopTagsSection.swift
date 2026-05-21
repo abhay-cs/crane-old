@@ -28,7 +28,7 @@ struct TopTagsSection: View {
         if hasAnyDrops {
             VStack(alignment: .leading, spacing: 8) {
                 CraneSectionHeader(
-                    title: "Top Tags",
+                    caps: "TOP TAGS",
                     trailing: isTagging && topTags.isEmpty ? "Tagging…" : nil
                 )
 
@@ -46,7 +46,7 @@ struct TopTagsSection: View {
                     TagSkeletonRow()
                 } else {
                     Text("Tags appear on your thoughts after capture.")
-                        .font(CraneFont.ui(12))
+                        .font(CraneFont.ui(14))
                         .foregroundStyle(Color.craneInkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -58,6 +58,7 @@ struct TopTagsSection: View {
 private struct TagSkeletonRow: View {
     private let widths: [CGFloat] = [52, 44, 60, 48]
     @State private var pulsing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 6) {
@@ -69,6 +70,7 @@ private struct TagSkeletonRow: View {
         }
         .accessibilityLabel("Tagging in progress")
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 pulsing = true
             }
@@ -82,11 +84,11 @@ private struct AIUnavailableBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "sparkles")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.craneInkTertiary)
                 .padding(.top, 1)
             Text(message)
-                .font(CraneFont.ui(11))
+                .font(CraneFont.ui(14))
                 .foregroundStyle(Color.craneInkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }

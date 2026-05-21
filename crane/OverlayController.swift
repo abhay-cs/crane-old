@@ -26,7 +26,7 @@ final class OverlayController {
     /// transparent padding on each side; history keeps the original 480pt
     /// height so the list has room to scroll.
     /// Two-row capture pill: input row + hint row + padding.
-    static let inputSize  = NSSize(width: 620, height: 116)
+    static let inputSize  = NSSize(width: 620, height: 132)
     static let historySize = NSSize(width: 620, height: 480)
 
     /// Currently displayed view. Mutating this animates the panel resize.
@@ -52,6 +52,8 @@ final class OverlayController {
 
     /// Invalidates in-flight post-save dismiss callbacks.
     private var saveDismissGeneration = 0
+
+    private var scrollHighlightClearTask: Task<Void, Never>?
 
     private static let screenMargin: CGFloat = 16
 
@@ -102,6 +104,7 @@ final class OverlayController {
 
     func show() {
         cancelAfterSaveDismiss()
+        cancelScrollHighlightClearTask()
         captureSourceApp()
         // Always start in the input view (matches Tauri "reset-to-input").
         if currentView != .input {
@@ -124,6 +127,7 @@ final class OverlayController {
     /// Show the history list, optionally scrolling to a specific drop.
     func openHistory(focusing dropID: UUID? = nil, search: String? = nil) {
         cancelAfterSaveDismiss()
+        cancelScrollHighlightClearTask()
         captureSourceApp()
         scrollToDropID = dropID
         scrollToken = UUID()
@@ -141,7 +145,7 @@ final class OverlayController {
 
     func hide() {
         cancelAfterSaveDismiss()
-        scrollToDropID = nil
+        clearScrollHighlight()
         historySearchQuery = nil
         capturedSourceApp = nil
         inputResetToken = UUID()
@@ -149,10 +153,10 @@ final class OverlayController {
     }
 
     /// Schedules `block` after a save animation unless superseded by show/hide.
-    func scheduleAfterSaveDismiss(_ block: @escaping () -> Void) {
+    func scheduleAfterSaveDismiss(after seconds: TimeInterval = 0.45, _ block: @escaping () -> Void) {
         saveDismissGeneration += 1
         let generation = saveDismissGeneration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
             guard generation == self.saveDismissGeneration else { return }
             block()
         }
@@ -160,6 +164,26 @@ final class OverlayController {
 
     func cancelAfterSaveDismiss() {
         saveDismissGeneration += 1
+    }
+
+    /// Clears the scroll-to highlight after the user has seen the focused row.
+    func scheduleScrollHighlightClear(after seconds: TimeInterval = 2.5) {
+        scrollHighlightClearTask?.cancel()
+        scrollHighlightClearTask = Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            clearScrollHighlight()
+        }
+    }
+
+    func clearScrollHighlight() {
+        cancelScrollHighlightClearTask()
+        scrollToDropID = nil
+    }
+
+    private func cancelScrollHighlightClearTask() {
+        scrollHighlightClearTask?.cancel()
+        scrollHighlightClearTask = nil
     }
 
     /// Esc: history → input pill; input → dismiss overlay.

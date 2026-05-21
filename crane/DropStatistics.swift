@@ -116,14 +116,15 @@ struct DropStatistics {
         return points
     }
 
+    /// Aggregates thought/link split from a bounded sample (newest first).
+    /// Avoids `#Predicate` on enum `rawValue`, which crashes on some SwiftData builds.
     private static func typeBreakdown(in context: ModelContext) throws -> (thoughts: Int, links: Int) {
-        let thoughts = try context.fetchCount(
-            FetchDescriptor<Drop>(predicate: #Predicate<Drop> { $0.dropType.rawValue == "thought" })
+        var descriptor = FetchDescriptor<Drop>(
+            sortBy: [SortDescriptor(\Drop.timestamp, order: .reverse)]
         )
-        let links = try context.fetchCount(
-            FetchDescriptor<Drop>(predicate: #Predicate<Drop> { $0.dropType.rawValue == "link" })
-        )
-        return (thoughts, links)
+        descriptor.fetchLimit = Persistence.maxFetchedDrops
+        let sample = try context.fetch(descriptor)
+        return sample.typeBreakdown
     }
 
     /// Aggregates tags from a bounded sample of tagged drops (newest first).

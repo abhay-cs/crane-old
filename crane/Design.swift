@@ -35,12 +35,30 @@ enum DesignMetrics {
     static let rowCornerRadius: CGFloat = 8
     static let chipCornerRadius: CGFloat = 10
 
+    /// Icon column in list rows.
+    static let iconColumnWidth: CGFloat = 14
+    /// Navigate affordance column (chevron) in dashboard recent rows.
+    static let navigateColumnWidth: CGFloat = 14
+    /// Delete control column in list rows.
+    static let actionColumnWidth: CGFloat = 28
+
     /// Capture pill content height (single input row).
     static let inputRowHeight: CGFloat = 40
-    /// Hint row below capture field.
-    static let hintRowHeight: CGFloat = 22
+    /// Hint row below capture field (12px mono + key chips).
+    static let hintRowHeight: CGFloat = 24
+    static let hintRowMaxHeight: CGFloat = 40
     static let inputPillVerticalPadding: CGFloat = 12
     static let inputPillHorizontalPadding: CGFloat = 18
+
+    /// Menu-bar dashboard window.
+    static let dashboardWidth: CGFloat = 380
+    static let dashboardHeight: CGFloat = 580
+    static let dashboardFooterHeight: CGFloat = 52
+    static let dashboardSectionSpacing: CGFloat = 20
+
+    static var dashboardScrollHeight: CGFloat {
+        dashboardHeight - dashboardFooterHeight
+    }
 }
 
 // MARK: - Environment
@@ -100,7 +118,7 @@ private struct CraneCardSurfaceModifier: ViewModifier {
         content
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(CraneColor.accentSoft(for: colorScheme))
+                    .fill(CraneColor.cardWash(for: colorScheme))
                     .background {
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                             .fill(.regularMaterial)
@@ -124,7 +142,12 @@ extension View {
         .specularBorder(cornerRadius: cornerRadius)
     }
 
-    /// Dashboard stat cards and count badges.
+    /// Accent ring for focused capture shell or active panels.
+    func craneAccentFocusRing(isFocused: Bool, cornerRadius: CGFloat = DesignMetrics.surfaceCornerRadius) -> some View {
+        modifier(CraneAccentFocusRingModifier(isFocused: isFocused, cornerRadius: cornerRadius))
+    }
+
+    /// Dashboard stat cards and count badges — neutral material, not accent wash.
     func craneCard(cornerRadius: CGFloat = DesignMetrics.cardCornerRadius) -> some View {
         modifier(CraneCardSurfaceModifier(cornerRadius: cornerRadius))
     }
@@ -141,12 +164,56 @@ extension View {
         }
     }
 
-    /// List row hover highlight.
-    func craneRowHighlight(isHighlighted: Bool, cornerRadius: CGFloat = DesignMetrics.rowCornerRadius) -> some View {
+    /// List row hover / emphasis highlight.
+    func craneRowHighlight(
+        isHighlighted: Bool,
+        isEmphasized: Bool = false,
+        cornerRadius: CGFloat = DesignMetrics.rowCornerRadius
+    ) -> some View {
+        modifier(CraneRowHighlightModifier(
+            isHighlighted: isHighlighted,
+            isEmphasized: isEmphasized,
+            cornerRadius: cornerRadius
+        ))
+    }
+
+    /// Section divider between history header and list.
+    func craneDivider() -> some View {
+        overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(CraneColor.creamLine)
+                .frame(height: 0.5)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Menu-bar dashboard shell background.
+    func craneDashboardBackground() -> some View {
         background {
-            if isHighlighted {
+            Color.craneSurface.opacity(0.02)
+                .background(.regularMaterial)
+        }
+    }
+}
+
+private struct CraneRowHighlightModifier: ViewModifier {
+    let isHighlighted: Bool
+    let isEmphasized: Bool
+    let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.background {
+            if isEmphasized {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.craneThought.opacity(0.12))
+                    .fill(CraneColor.accentSoft(for: colorScheme))
+                    .background {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.regularMaterial)
+                    }
+            } else if isHighlighted {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.craneInk.opacity(0.06))
                     .background {
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                             .fill(.regularMaterial)
@@ -154,13 +221,18 @@ extension View {
             }
         }
     }
+}
 
-    /// Section divider between history header and list.
-    func craneDivider() -> some View {
-        overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.craneCream.opacity(0.07))
-                .frame(height: 0.5)
+private struct CraneAccentFocusRingModifier: ViewModifier {
+    let isFocused: Bool
+    let cornerRadius: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: isFocused ? 0.5 : 0)
+                .animation(.craneSnappy, value: isFocused)
                 .allowsHitTesting(false)
         }
     }

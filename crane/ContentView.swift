@@ -11,6 +11,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(OverlayController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -19,15 +20,21 @@ struct ContentView: View {
                 DropInputBar()
                     .transition(.asymmetric(
                         insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)),
-                        removal: .opacity
+                        removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
                     ))
             case .history:
                 HistoryView()
-                    .transition(.opacity)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)),
+                        removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+                    ))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .animation(.craneSpring, value: controller.currentView)
+        .animation(
+            CraneMotion.adaptive(.craneSpring, reduceMotion: reduceMotion),
+            value: controller.currentView
+        )
         .background { overlayShortcuts }
     }
 
@@ -47,6 +54,8 @@ struct ContentView: View {
 private struct DropInputBar: View {
     @Environment(OverlayController.self) private var controller
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var text: String = ""
     @State private var linkMode: Bool = false
@@ -54,11 +63,17 @@ private struct DropInputBar: View {
     @State private var justSaved: Bool = false
     @State private var linkError: String?
     @State private var saveFlash = false
+    @State private var shellAppeared = false
     @FocusState private var captureFocused: Bool
 
     private var leadingSymbol: String {
         if justSaved { return "checkmark" }
         return linkMode ? "link" : "square.and.pencil"
+    }
+
+    private var shellOpacity: Double {
+        if saving { return 0.85 }
+        return shellAppeared ? 1 : 0
     }
 
     var body: some View {
@@ -70,7 +85,11 @@ private struct DropInputBar: View {
                         .foregroundStyle(
                             justSaved
                                 ? AnyShapeStyle(CraneColor.accent)
-                                : AnyShapeStyle(linkMode ? CraneColor.link : Color.craneInkSecondary)
+                                : AnyShapeStyle(Color.craneInkSecondary)
+                        )
+                        .shadow(
+                            color: justSaved ? CraneColor.accentGlow(for: colorScheme) : .clear,
+                            radius: justSaved ? 10 : 0
                         )
                         .symbolRenderingMode(.hierarchical)
                         .frame(width: 22)
@@ -91,37 +110,46 @@ private struct DropInputBar: View {
                 .frame(height: DesignMetrics.inputRowHeight)
 
                 Group {
-                    if let linkError {
+                    if justSaved {
+                        SavedHint()
+                    } else if let linkError {
                         LinkValidationHint(message: linkError)
                     } else {
                         HintChips(linkMode: linkMode)
                     }
                 }
-                .frame(height: DesignMetrics.hintRowHeight, alignment: .leading)
+                .frame(minHeight: DesignMetrics.hintRowHeight, maxHeight: DesignMetrics.hintRowMaxHeight, alignment: .leading)
             }
             .padding(.horizontal, DesignMetrics.inputPillHorizontalPadding)
             .padding(.vertical, DesignMetrics.inputPillVerticalPadding)
             .craneOverlayShell()
+            .craneAccentFocusRing(isFocused: captureFocused && !justSaved)
             .overlay {
                 RoundedRectangle(cornerRadius: DesignMetrics.surfaceCornerRadius, style: .continuous)
                     .fill(Color.craneCream.opacity(saveFlash ? 0.12 : 0))
                     .allowsHitTesting(false)
             }
+            .opacity(shellOpacity)
             .padding(.horizontal, 12)
             .padding(.top, 12)
 
             shortcutButtons
         }
-        .onAppear { focusCaptureField() }
+        .onAppear {
+            withAnimation(CraneMotion.adaptive(.craneSpring, reduceMotion: reduceMotion)) {
+                shellAppeared = true
+            }
+            focusCaptureField()
+        }
         .onChange(of: controller.currentView) { _, newValue in
             if newValue == .input { focusCaptureField() }
         }
         .onChange(of: controller.inputResetToken) { _, _ in
             resetDraft()
         }
-        .animation(.craneSnappy, value: linkMode)
-        .animation(.craneSnappy, value: justSaved)
-        .animation(.craneSnappy, value: linkError != nil)
+        .animation(CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion), value: linkMode)
+        .animation(CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion), value: justSaved)
+        .animation(CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion), value: linkError != nil)
         .onChange(of: text) { _, _ in linkError = nil }
         .onChange(of: linkMode) { _, _ in linkError = nil }
     }
@@ -184,9 +212,13 @@ private struct DropInputBar: View {
 
         saving = false
         justSaved = true
-        withAnimation(.craneSubtle) { saveFlash = true }
+        withAnimation(CraneMotion.adaptive(.craneSubtle, reduceMotion: reduceMotion)) {
+            saveFlash = true
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            withAnimation(.craneSubtle) { saveFlash = false }
+            withAnimation(CraneMotion.adaptive(.craneSubtle, reduceMotion: reduceMotion)) {
+                saveFlash = false
+            }
         }
         controller.scheduleAfterSaveDismiss { hideAndReset() }
     }
@@ -208,6 +240,7 @@ private struct DropInputBar: View {
         justSaved = false
         linkError = nil
         saveFlash = false
+        shellAppeared = true
     }
 }
 
@@ -222,6 +255,7 @@ private struct CaptureMirrorField: View {
     @FocusState.Binding var isFocused: Bool
     var onSubmit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let captureFontSize: CGFloat = 22
     private static let captureTracking: CGFloat = -0.15
@@ -245,9 +279,13 @@ private struct CaptureMirrorField: View {
                     .font(CraneFont.display(Self.captureFontSize))
                     .tracking(Self.captureTracking)
                     .foregroundStyle(Color.craneInkTertiary)
-                    // Nudge right while focused so the system caret isn’t buried under the label.
                     .padding(.leading, isFocused ? 3 : 0)
                     .offset(y: 2)
+                    .opacity(isFocused ? 0.55 : 1)
+                    .animation(
+                        CraneMotion.adaptive(.craneSubtle, reduceMotion: reduceMotion),
+                        value: isFocused
+                    )
                     .frame(maxHeight: .infinity, alignment: .center)
                     .allowsHitTesting(false)
             } else {
@@ -271,6 +309,9 @@ private struct CaptureMirrorField: View {
 private struct CaptureModeSegment: View {
     @Binding var linkMode: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var modePulse = false
 
     var body: some View {
         HStack(spacing: 2) {
@@ -278,22 +319,33 @@ private struct CaptureModeSegment: View {
             segment("Link", selected: linkMode) { linkMode = true }
         }
         .padding(3)
-        .background(Color.craneCream.opacity(0.12), in: Capsule(style: .continuous))
+        .background(Color.craneInk.opacity(0.05), in: Capsule(style: .continuous))
+        .scaleEffect(modePulse ? 1.03 : 1)
         .fixedSize()
+        .onChange(of: linkMode) { _, _ in
+            guard !reduceMotion else { return }
+            withAnimation(.craneSnappy) { modePulse = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.craneSnappy) { modePulse = false }
+            }
+        }
     }
 
     private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(CraneFont.ui(10, weight: .medium))
-                .tracking(0.3)
+                .font(CraneFont.ui(13, weight: .medium))
                 .foregroundStyle(selected ? CraneColor.cream : Color.craneInkTertiary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background {
                     if selected {
                         Capsule(style: .continuous)
                             .fill(CraneColor.accentFill(for: colorScheme))
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: 0.5)
+                            }
                     }
                 }
         }
@@ -310,15 +362,29 @@ private struct LinkValidationHint: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
             Text(message)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .font(CraneFont.ui(11, weight: .medium))
+        .font(CraneFont.ui(13, weight: .medium))
         .foregroundStyle(Color.craneWarning)
         .accessibilityLabel(message)
+    }
+}
+
+// MARK: - Saved hint
+
+private struct SavedHint: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 11, weight: .semibold))
+            Text("Saved")
+        }
+        .font(CraneFont.ui(14, weight: .medium))
+        .foregroundStyle(CraneColor.accent)
     }
 }
 
@@ -339,7 +405,7 @@ private struct HintChips: View {
                 HintKey("⌘H")
                 Text("history")
             }
-            .font(CraneFont.mono(11))
+            .font(CraneFont.mono(13))
             .foregroundStyle(Color.craneInkTertiary)
         }
     }
@@ -351,7 +417,7 @@ private struct HintKey: View {
 
     var body: some View {
         Text(label)
-            .font(CraneFont.mono(10, weight: .medium))
+            .font(CraneFont.mono(12, weight: .medium))
             .foregroundStyle(Color.craneInkSecondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)

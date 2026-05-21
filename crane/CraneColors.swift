@@ -20,18 +20,33 @@ enum CraneColor {
     static let warning = Color("CraneWarning")
     static let accent = Color.accentColor
 
-    /// Filled controls (segment pill, primary buttons). Slightly deeper than `accent` in dark mode.
+    /// Filled controls (segment pill, primary buttons). Same hue as `accent`.
     static func accentFill(for scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? Color(red: 0.36, green: 0.42, blue: 0.92)
-            : accent
+        accent
     }
 
+    /// Hover, focus, and selected backgrounds — not static card fills.
     static func accentSoft(for scheme: ColorScheme) -> Color {
-        accentFill(for: scheme).opacity(scheme == .dark ? 0.22 : 0.14)
+        accent.opacity(scheme == .dark ? 0.22 : 0.10)
     }
+
+    /// Selection rings and focused-field outlines (mirrors landing `--accent-line`).
+    static func accentLine(for scheme: ColorScheme) -> Color {
+        accent.opacity(scheme == .dark ? 0.40 : 0.28)
+    }
+
+    /// Brief luminous pulse on save / active indicators.
+    static func accentGlow(for scheme: ColorScheme) -> Color {
+        accent.opacity(scheme == .dark ? 0.35 : 0.25)
+    }
+
     static let creamLine = cream.opacity(0.07)
     static let inkLine = ink.opacity(0.08)
+
+    /// Elevated card / badge wash — warm in dark, ink in light.
+    static func cardWash(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? cream.opacity(0.04) : ink.opacity(0.04)
+    }
 
     /// Capture-field insertion point: cream in dark mode, black in light mode.
     static func caret(for scheme: ColorScheme) -> Color {

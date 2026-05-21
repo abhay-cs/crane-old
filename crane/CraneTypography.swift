@@ -53,10 +53,10 @@ enum CraneTextStyle {
         switch self {
         case .capture: CraneFont.display(26)
         case .title: CraneFont.display(20)
-        case .section: CraneFont.ui(11, weight: .semibold)
-        case .body: CraneFont.ui(13)
+        case .section: CraneFont.ui(13, weight: .semibold)
+        case .body: CraneFont.ui(14)
         case .meta: CraneFont.ui(12)
-        case .caps: CraneFont.ui(10, weight: .medium)
+        case .caps: CraneFont.ui(12, weight: .medium)
         }
     }
 
@@ -72,7 +72,7 @@ enum CraneTextStyle {
     var foreground: Color {
         switch self {
         case .capture, .body: .craneInk
-        case .title, .section: .craneInkSecondary
+        case .title, .section: .craneInk
         case .meta, .caps: .craneInkTertiary
         }
     }

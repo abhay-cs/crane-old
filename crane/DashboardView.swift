@@ -5,7 +5,7 @@
 
 import SwiftUI
 import SwiftData
-import Charts
+// import Charts
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,12 +15,9 @@ struct DashboardView: View {
     @Query private var recentDrops: [Drop]
 
     @State private var stats: DropStatistics = .empty
-    @State private var headerHovering = false
-    #if DEBUG
-    @State private var pendingSeedConfirmation = false
-    @State private var seedingSampleData = false
-    @State private var seedReplaceHovering = false
-    #endif
+    @State private var dashboardHovering = false
+    @State private var pendingResetConfirmation = false
+    @State private var resetDeleteHovering = false
 
     init() {
         var descriptor = FetchDescriptor<Drop>(
@@ -32,11 +29,13 @@ struct DashboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView(.vertical, showsIndicators: false) {
+            ScrollView(.vertical, showsIndicators: dashboardHovering) {
                 VStack(alignment: .leading, spacing: DesignMetrics.dashboardSectionSpacing) {
                     header
-                    statCards
-                    activitySection
+                    if stats.totalCount > 0 {
+                        journalMetaLine
+                    }
+                    recentSection
                     TopTagsSection(
                         topTags: stats.topTags,
                         hasAnyDrops: stats.totalCount > 0,
@@ -44,22 +43,34 @@ struct DashboardView: View {
                     ) { tag in
                         openOverlayHistory(search: tag)
                     }
-                    recentSection
+                    // Charts disabled for now.
+                    // if stats.totalCount > 0 {
+                    //     rhythmSection
+                    // }
                 }
-                .padding(DesignMetrics.md)
+                .padding(DesignMetrics.dashboardContentInset)
             }
             .frame(height: DesignMetrics.dashboardScrollHeight)
+            .onHover { dashboardHovering = $0 }
 
             footer
         }
         .frame(
             width: DesignMetrics.dashboardWidth,
-            height: DesignMetrics.dashboardHeight,
+            height: DesignMetrics.dashboardHeight
+        )
+        .padding(DesignMetrics.glassShadowMargin)
+        .frame(
+            width: DesignMetrics.dashboardWindowWidth,
+            height: DesignMetrics.dashboardWindowHeight,
             alignment: .topLeading
         )
         .fixedSize(horizontal: true, vertical: true)
-        .clipped()
         .craneDashboardBackground()
+        .presentationBackground(.clear)
+        .containerBackground(.clear, for: .window)
+        .environment(\.colorScheme, .dark)
+        .preferredColorScheme(.dark)
         .onAppear(perform: refreshStatistics)
         .onChange(of: recentDrops.count) { _, _ in refreshStatistics() }
     }
@@ -78,18 +89,11 @@ struct DashboardView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 14, height: 14)
-                .foregroundStyle(CraneColor.accent)
-                .shadow(
-                    color: headerHovering ? CraneColor.accentGlow(for: colorScheme) : .clear,
-                    radius: headerHovering ? 8 : 0,
-                    y: 1
-                )
+                .foregroundStyle(Color.craneInkSecondary)
                 .accessibilityHidden(true)
 
             Text("crane")
-                .font(CraneFont.display(18))
-                .tracking(-0.2)
-                .foregroundStyle(Color.craneInk)
+                .craneText(.title)
 
             Spacer()
 
@@ -101,45 +105,45 @@ struct DashboardView: View {
                 openOverlayHistory(focusing: nil)
             }
         }
-        .onHover { headerHovering = $0 }
-        .animation(.craneSnappy, value: headerHovering)
     }
 
-    // MARK: - Stat cards
+    // MARK: - Journal meta
 
-    private var statCards: some View {
-        HStack(spacing: 10) {
-            StatCard(value: "\(stats.totalCount)", label: "TOTAL")
-            StatCard(
-                value: "\(stats.todayCount)",
-                label: "TODAY",
-                usesAccent: stats.todayCount > 0
-            )
-            StatCard(
-                value: "\(stats.streakDays)d",
-                label: "STREAK",
-                subtitle: stats.hasDropToday ? nil : "last active day",
-                usesAccent: stats.streakDays >= 3
-            )
+    private var journalMetaLine: some View {
+        Text(journalMetaSummary)
+            .craneText(.meta)
+            .accessibilityLabel(journalMetaSummary)
+    }
+
+    private var journalMetaSummary: String {
+        var parts: [String] = []
+        let entryWord = stats.totalCount == 1 ? "entry" : "entries"
+        parts.append("\(stats.totalCount) \(entryWord)")
+        if stats.todayCount > 0 {
+            parts.append("\(stats.todayCount) today")
         }
-        .frame(height: 84)
+        if stats.streakDays >= 2 {
+            parts.append("\(stats.streakDays) days in a row")
+        }
+        return parts.joined(separator: " · ")
     }
 
-    // MARK: - Activity
+    // MARK: - Rhythm
 
-    private var activitySection: some View {
+#if false // Charts disabled for now.
+    private var rhythmSection: some View {
         let breakdown = stats.typeBreakdown
         let hasTypeData = breakdown.thoughts + breakdown.links > 0
         let showActivityChart = stats.totalCount > 0
 
         return VStack(alignment: .leading, spacing: DesignMetrics.sm) {
-            CraneSectionHeader(caps: "Activity", capsEmphasis: .neutral, trailing: "14 days")
+            CraneSectionHeader(title: "Rhythm", style: .journal, trailing: "14 days")
 
             Group {
                 if showActivityChart {
                     ActivityChart(points: stats.dailyCounts)
                 } else {
-                    ActivityEmptyState()
+                    RhythmEmptyState()
                         .clipped()
                 }
             }
@@ -147,6 +151,7 @@ struct DashboardView: View {
 
             typeBreakdownSlot(hasTypeData: hasTypeData, breakdown: breakdown)
         }
+        .opacity(0.92)
     }
 
     @ViewBuilder
@@ -177,19 +182,20 @@ struct DashboardView: View {
         .opacity(hasTypeData ? 1 : 0)
         .accessibilityHidden(!hasTypeData)
     }
+#endif
 
     // MARK: - Recent
 
     private var recentSection: some View {
-        VStack(alignment: .leading, spacing: DesignMetrics.xs) {
+        VStack(alignment: .leading, spacing: DesignMetrics.sm) {
             CraneSectionHeader(
-                caps: "Recent",
-                capsEmphasis: .accent,
-                trailingActionTitle: recentDrops.isEmpty ? nil : "Open all",
+                title: "Recent",
+                style: .journal,
+                trailingActionTitle: recentDrops.isEmpty ? nil : "See everything",
                 trailingAction: recentDrops.isEmpty ? nil : { openOverlayHistory(focusing: nil) }
             )
 
-            let items = Array(recentDrops.prefix(2))
+            let items = Array(recentDrops.prefix(DesignMetrics.dashboardRecentLimit))
             if items.isEmpty {
                 RecentEmptyState()
             } else {
@@ -216,15 +222,11 @@ struct DashboardView: View {
                 .fill(CraneColor.creamLine)
                 .frame(height: 0.5)
 
-            #if DEBUG
-            if pendingSeedConfirmation {
-                seedConfirmationFooter
+            if pendingResetConfirmation {
+                resetConfirmationFooter
             } else {
                 defaultFooter
             }
-            #else
-            defaultFooter
-            #endif
         }
     }
 
@@ -236,14 +238,14 @@ struct DashboardView: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Text("New Drop")
+                    Text("Write")
                     Text("⌘⇧Space")
                         .font(CraneFont.mono(10, weight: .medium))
                         .foregroundStyle(CraneColor.cream.opacity(0.85))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, DesignMetrics.xs + 1)
+                        .padding(.vertical, DesignMetrics.xs / 2)
                         .background {
-                            RoundedRectangle(cornerRadius: DesignMetrics.xs + 2, style: .continuous)
+                            RoundedRectangle(cornerRadius: DesignMetrics.xs, style: .continuous)
                                 .fill(Color.craneInk.opacity(0.18))
                         }
                 }
@@ -251,14 +253,13 @@ struct DashboardView: View {
 
             Spacer()
 
-            #if DEBUG
-            CraneTertiaryButton {
-                pendingSeedConfirmation = true
-            } label: {
-                Text(seedingSampleData ? "Seeding…" : "Seed week")
+            if stats.totalCount > 0 {
+                CraneTertiaryButton {
+                    pendingResetConfirmation = true
+                } label: {
+                    Text("Reset")
+                }
             }
-            .disabled(seedingSampleData)
-            #endif
 
             CraneTertiaryButton {
                 NSApp.terminate(nil)
@@ -266,68 +267,64 @@ struct DashboardView: View {
                 Text("Quit")
             }
         }
-        .padding(.horizontal, DesignMetrics.md)
+        .padding(.horizontal, DesignMetrics.dashboardContentInset)
         .padding(.vertical, DesignMetrics.sm)
     }
 
-    #if DEBUG
-    private var seedConfirmationFooter: some View {
-        HStack(spacing: 8) {
+    private var resetConfirmationFooter: some View {
+        HStack(spacing: DesignMetrics.sm) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Load sample week?")
+                Text("Delete all entries?")
                     .font(CraneFont.ui(13, weight: .semibold))
                     .foregroundStyle(Color.craneInk)
-                Text("7 days · 10–15/day")
+                Text("This can’t be undone.")
                     .font(CraneFont.ui(10))
                     .foregroundStyle(Color.craneInkTertiary)
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: DesignMetrics.xs)
 
             CraneSecondaryButton {
-                pendingSeedConfirmation = false
+                pendingResetConfirmation = false
             } label: {
                 Text("Cancel")
             }
 
-            CraneTertiaryButton {
-                loadSampleWeek(clearFirst: false)
-                pendingSeedConfirmation = false
-            } label: {
-                Text("Append")
-            }
-            .disabled(seedingSampleData)
-
-            Button("Replace") {
-                loadSampleWeek(clearFirst: true)
-                pendingSeedConfirmation = false
+            Button("Delete All", role: .destructive) {
+                pendingResetConfirmation = false
+                resetAllData()
             }
             .buttonStyle(.plain)
             .font(CraneFont.ui(13, weight: .semibold))
             .foregroundStyle(Color.craneWarning)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, DesignMetrics.sm)
+            .padding(.vertical, DesignMetrics.xs)
             .background {
-                if seedReplaceHovering {
+                if resetDeleteHovering {
                     RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
                         .fill(Color.craneWarning.opacity(0.12))
                 }
             }
-            .onHover { seedReplaceHovering = $0 }
-            .animation(.craneSnappy, value: seedReplaceHovering)
-            .disabled(seedingSampleData)
+            .onHover { resetDeleteHovering = $0 }
+            .animation(.craneSnappy, value: resetDeleteHovering)
         }
-        .padding(.horizontal, DesignMetrics.md)
+        .padding(.horizontal, DesignMetrics.dashboardContentInset)
         .padding(.vertical, DesignMetrics.sm)
-        .animation(.craneSnappy, value: pendingSeedConfirmation)
+        .animation(.craneSnappy, value: pendingResetConfirmation)
     }
-    #endif
 
     // MARK: - Actions
 
     private func delete(_ drop: Drop) {
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAnimation(.craneSpring) {
             modelContext.deleteDrop(drop)
+        }
+        refreshStatistics()
+    }
+
+    private func resetAllData() {
+        withAnimation(.craneSpring) {
+            AppDelegate.shared?.resetAllData()
         }
         refreshStatistics()
     }
@@ -338,64 +335,9 @@ struct DashboardView: View {
             AppDelegate.shared?.showOverlayHistory(focusing: dropID, search: search)
         }
     }
-
-    #if DEBUG
-    private func loadSampleWeek(clearFirst: Bool) {
-        seedingSampleData = true
-        do {
-            let count = try DummyDataSeeder.seedWeekOfUsage(in: modelContext, clearFirst: clearFirst)
-            refreshStatistics()
-            print("crane: seeded \(count) sample drops")
-        } catch {
-            print("crane: sample seed failed: \(error)")
-        }
-        seedingSampleData = false
-    }
-    #endif
 }
 
-// MARK: - Stat card
-
-private struct StatCard: View {
-    let value: String
-    let label: String
-    var subtitle: String?
-    var usesAccent: Bool = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: DesignMetrics.xs) {
-            Text(value)
-                .font(CraneFont.display(32))
-                .monospacedDigit()
-                .foregroundStyle(usesAccent ? CraneColor.accent : Color.craneInk)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-            Text(label)
-                .font(CraneFont.ui(12, weight: .medium))
-                .tracking(0.6)
-                .foregroundStyle(usesAccent ? CraneColor.accent : Color.craneInkTertiary)
-            if let subtitle {
-                Text(subtitle)
-                    .font(CraneFont.ui(11, weight: .medium))
-                    .foregroundStyle(Color.craneInkTertiary.opacity(0.85))
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .craneCard()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityText)
-    }
-
-    private var accessibilityText: String {
-        if let subtitle {
-            return "\(label), \(value), \(subtitle)"
-        }
-        return "\(label), \(value)"
-    }
-}
+#if false // Charts disabled for now.
 
 // MARK: - Activity chart
 
@@ -450,6 +392,7 @@ private struct ActivityChart: View {
             }
         }
         .chartYAxis(.hidden)
+        .animation(.craneChartHover, value: hoveredDay)
         .chartOverlay { proxy in
             GeometryReader { geometry in
                 let plotFrame = geometry[proxy.plotAreaFrame]
@@ -486,8 +429,12 @@ private struct ActivityChart: View {
                proxy: proxy,
                labelHeight: ActivityChartMetrics.tooltipHeight
            ) {
+            // Keyed by day so content swaps cleanly while position springs between bars.
             ChartDayTooltip(date: hoveredDay, count: count)
+                .id(hoveredDay)
+                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)))
                 .position(anchor)
+                .animation(.craneChartHover, value: anchor)
         } else if hoveredDay == nil, let todayCount = count(on: today), todayCount > 0,
                   let anchor = tooltipPosition(
                       in: plotFrame,
@@ -500,6 +447,7 @@ private struct ActivityChart: View {
                 .font(CraneFont.mono(10, weight: .medium))
                 .foregroundStyle(CraneColor.accent)
                 .monospacedDigit()
+                .transition(.opacity)
                 .position(x: anchor.x, y: anchor.y)
         }
     }
@@ -560,9 +508,9 @@ private struct ActivityChart: View {
 
     private func barColor(for point: (date: Date, count: Int)) -> Color {
         if isToday(point) {
-            return CraneColor.accent
+            return CraneColor.accent.opacity(0.85)
         }
-        return CraneColor.accent.opacity(0.55)
+        return CraneColor.accent.opacity(0.35)
     }
 
     private func barOpacity(for point: (date: Date, count: Int)) -> Double {
@@ -594,58 +542,31 @@ private struct ChartDayTooltip: View {
             RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
                 .fill(CraneColor.cardWash(for: colorScheme))
         }
-        .specularBorder(cornerRadius: DesignMetrics.rowCornerRadius)
     }
 }
 
-private struct ActivityEmptyState: View {
+private struct RhythmEmptyState: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 36, height: 36)
-                Image(systemName: "chart.bar")
-                    .font(.system(size: 15, weight: .light))
+                    .fill(CraneColor.sageSoft(for: colorScheme))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "waveform.path")
+                    .font(CraneFont.symbol(14, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
 
-            Text("No activity yet")
-                .font(CraneFont.ui(13, weight: .medium))
+            Text("Your rhythm will show up here.")
+                .font(CraneFont.ui(12))
                 .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("No activity yet. Use New Drop in the footer to capture.")
-    }
-}
-
-private struct RecentEmptyState: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 36, height: 36)
-                Image(systemName: "tray")
-                    .font(.system(size: 15, weight: .light))
-                    .foregroundStyle(Color.craneInkSecondary)
-                    .symbolRenderingMode(.hierarchical)
-            }
-
-            Text("Nothing held yet.")
-                .font(CraneFont.ui(13, weight: .medium))
-                .foregroundStyle(Color.craneInkTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Nothing held yet. Use New Drop in the footer to capture.")
+        .accessibilityLabel("Your rhythm will show up here. Use Write in the footer to capture.")
     }
 }
 
@@ -687,13 +608,41 @@ private struct LegendChip: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(label)
-                .font(CraneFont.ui(14))
-                .foregroundStyle(Color.craneInkSecondary)
+                .font(CraneFont.ui(12))
+                .foregroundStyle(Color.craneInkTertiary)
             Text("\(count)")
-                .font(CraneFont.ui(14, weight: .semibold))
+                .font(CraneFont.ui(12, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(Color.craneInk)
         }
+    }
+}
+
+#endif
+
+private struct RecentEmptyState: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(CraneColor.sageSoft(for: colorScheme))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "text.book.closed")
+                    .font(CraneFont.symbol(14, weight: .light))
+                    .foregroundStyle(Color.craneInkSecondary)
+                    .symbolRenderingMode(.hierarchical)
+            }
+
+            Text("Nothing written yet.")
+                .craneText(.body)
+                .foregroundStyle(Color.craneInkTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DesignMetrics.md)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Nothing written yet. Use Write in the footer to capture.")
     }
 }
 

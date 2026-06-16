@@ -9,7 +9,7 @@ struct EmptyStateView: View {
     var symbol: String = "tray"
     var headline: String? = nil
     let message: String
-    var primaryTitle: String = "Capture drop"
+    var primaryTitle: String = "Write"
     var primaryAction: (() -> Void)?
     var secondaryTitle: String?
     var secondaryAction: (() -> Void)?
@@ -20,10 +20,10 @@ struct EmptyStateView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(CraneColor.accentSoft(for: colorScheme))
+                    .fill(CraneColor.sageSoft(for: colorScheme))
                     .frame(width: 52, height: 52)
                 Image(systemName: symbol)
-                    .font(.system(size: 24, weight: .light))
+                    .font(CraneFont.symbol(24, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
@@ -31,14 +31,12 @@ struct EmptyStateView: View {
             VStack(spacing: 6) {
                 if let headline {
                     Text(headline)
-                        .font(CraneFont.display(18))
-                        .tracking(-0.15)
-                        .foregroundStyle(Color.craneInk)
+                        .craneText(.title)
                         .multilineTextAlignment(.center)
                 }
 
                 Text(message)
-                    .font(CraneFont.ui(14))
+                    .craneText(.body)
                     .foregroundStyle(Color.craneInkTertiary)
                     .multilineTextAlignment(.center)
             }
@@ -55,7 +53,7 @@ struct EmptyStateView: View {
                 }
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, DesignMetrics.md)
         .frame(maxWidth: .infinity)
     }
 }

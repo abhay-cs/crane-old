@@ -32,15 +32,15 @@ struct CraneDropGlyph: View {
     private var foregroundColor: Color {
         switch context {
         case .list:
-            return Color.craneInkSecondary
+            return dropType == .link ? CraneColor.link : CraneColor.thought
         case .capture:
-            return dropType == .link ? CraneColor.accent : Color.craneInkSecondary
+            return dropType == .link ? CraneColor.link : CraneColor.thought
         }
     }
 
     var body: some View {
         Image(systemName: symbolName)
-            .font(.system(size: size, weight: .medium))
+            .font(CraneFont.symbol(size, weight: .medium))
             .foregroundStyle(foregroundColor)
             .frame(
                 width: context == .capture ? 22 : DesignMetrics.iconColumnWidth,

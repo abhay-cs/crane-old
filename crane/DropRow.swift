@@ -36,6 +36,14 @@ struct DropRow: View {
 
     private var bodyLineLimit: Int { style == .compact ? 2 : 4 }
     private var verticalPadding: CGFloat { style == .compact ? 8 : 10 }
+    /// Dashboard scroll provides `dashboardContentInset`; overlay rows carry their own inset.
+    private var horizontalPadding: CGFloat {
+        style == .compact ? 0 : DesignMetrics.overlayContentInset
+    }
+
+    private var rowActionsVisible: Bool {
+        hovering || isFocused || pendingInlineDelete || deleteHovering
+    }
 
     var body: some View {
         Group {
@@ -53,7 +61,7 @@ struct DropRow: View {
             activateButton
             rowTrailingActions
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
         .craneRowHighlight(
             isHighlighted: hovering && !pendingInlineDelete && !isEmphasized,
@@ -79,10 +87,10 @@ struct DropRow: View {
         HStack(spacing: 2) {
             if onActivate != nil {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.craneInkTertiary)
+                    .font(CraneFont.symbol(10, weight: .semibold))
+                    .foregroundStyle(Color.craneInkSecondary)
                     .frame(width: DesignMetrics.navigateColumnWidth, height: 28)
-                    .opacity(hovering ? 0.55 : 0)
+                    .opacity(rowActionsVisible ? 0.55 : 0)
                     .accessibilityHidden(true)
             }
             deleteButton
@@ -93,13 +101,17 @@ struct DropRow: View {
                 : DesignMetrics.actionColumnWidth,
             alignment: .trailing
         )
+        .opacity(rowActionsVisible ? 1 : 0)
+        .animation(.craneSnappy, value: rowActionsVisible)
     }
 
     @ViewBuilder
     private var activateButton: some View {
-        let content = HStack(alignment: .top, spacing: 10) {
+        let content = HStack(alignment: .firstTextBaseline, spacing: 10) {
             CraneDropGlyph(dropType: drop.dropType, context: .list, size: 12)
-                .padding(.top, 3)
+                .alignmentGuide(.firstTextBaseline) { dimensions in
+                    dimensions[VerticalAlignment.center]
+                }
 
             VStack(alignment: .leading, spacing: 2) {
                 textBody
@@ -132,7 +144,7 @@ struct DropRow: View {
         } else if drop.aiTaggingFailed {
             HStack(spacing: 4) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(CraneFont.symbol(12, weight: .medium))
                 Text("Tags unavailable")
                     .font(CraneFont.ui(12, weight: .medium))
             }
@@ -151,8 +163,7 @@ struct DropRow: View {
                 Text(app)
             }
         }
-        .font(CraneFont.ui(12))
-        .foregroundStyle(Color.craneInkTertiary)
+        .craneText(.meta)
         .lineLimit(1)
     }
 
@@ -161,26 +172,27 @@ struct DropRow: View {
             requestDeleteConfirmation()
         } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 11, weight: .medium))
+                .font(CraneFont.symbol(11, weight: .medium))
                 .foregroundStyle(Color.craneInkTertiary)
                 .frame(width: 28, height: 28)
                 .contentShape(Rectangle())
                 .overlay {
                     RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
-                        .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: deleteHovering ? 0.5 : 0)
+                        .strokeBorder(CraneColor.focusLine(for: colorScheme), lineWidth: deleteHovering ? 0.5 : 0)
                 }
         }
         .buttonStyle(.plain)
         .opacity(rowDeleteOpacity)
+        .allowsHitTesting(rowDeleteOpacity > 0)
         .onHover { deleteHovering = $0 }
         .animation(.craneSnappy, value: deleteHovering)
+        .animation(.craneSnappy, value: rowDeleteOpacity)
         .help("Delete drop")
         .accessibilityLabel("Delete drop")
     }
 
     private var rowDeleteOpacity: Double {
-        if hovering || isFocused || pendingInlineDelete || deleteHovering { return 1 }
-        return 0.7
+        rowActionsVisible ? 1 : 0
     }
 
     private var inlineDeleteRow: some View {
@@ -216,7 +228,7 @@ struct DropRow: View {
             .onHover { deleteWarningHovering = $0 }
             .animation(.craneSnappy, value: deleteWarningHovering)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
         .craneRowHighlight(isHighlighted: true)
         .accessibilityElement(children: .combine)
@@ -233,28 +245,32 @@ struct DropRow: View {
 
     @ViewBuilder
     private var textBody: some View {
-        if drop.dropType == .link, onActivate == nil, let url = Drop.linkURL(for: drop.text) {
+        if drop.dropType == .link, let url = Drop.linkURL(for: drop.text) {
             Link(drop.text, destination: url)
-                .font(CraneFont.ui(14))
-                .foregroundStyle(CraneColor.accent)
-                .underline(true, color: CraneColor.accent)
+                .craneText(entryTextStyle)
+                .foregroundStyle(CraneColor.link)
+                .underline(true, color: CraneColor.linkLine(for: colorScheme))
                 .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         } else if drop.dropType == .link {
             Text(drop.text)
-                .font(CraneFont.ui(14))
-                .foregroundStyle(CraneColor.accent)
-                .underline(true, color: CraneColor.accent)
+                .craneText(entryTextStyle)
+                .foregroundStyle(CraneColor.link)
+                .underline(true, color: CraneColor.linkLine(for: colorScheme))
                 .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         } else {
             Text(drop.text)
-                .font(CraneFont.ui(14))
-                .foregroundStyle(Color.craneInk)
+                .craneText(entryTextStyle)
                 .textSelection(.enabled)
                 .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         }
+    }
+
+    /// Serif for journal entries on the dashboard; sans elsewhere.
+    private var entryTextStyle: CraneTextStyle {
+        style == .compact ? .journalBody : .body
     }
 
     private var rowAccessibilityLabel: String {

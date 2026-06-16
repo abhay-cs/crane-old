@@ -34,6 +34,7 @@ struct CranePrimaryButtonStyle: ButtonStyle {
 
 struct CraneSecondaryButtonStyle: ButtonStyle {
     var isHovered: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
@@ -45,7 +46,11 @@ struct CraneSecondaryButtonStyle: ButtonStyle {
             .background {
                 if isHovered || pressed {
                     RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
-                        .fill(Color.craneInk.opacity(pressed ? 0.08 : 0.06))
+                        .fill(
+                            pressed
+                                ? Color.craneInk.opacity(colorScheme == .dark ? 0.08 : 0.06)
+                                : CraneColor.recessFill(for: colorScheme)
+                        )
                 }
             }
             .animation(.craneSnappy, value: pressed)

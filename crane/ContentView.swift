@@ -30,7 +30,7 @@ struct ContentView: View {
                     ))
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(
             CraneMotion.adaptive(.craneSpring, reduceMotion: reduceMotion),
             value: controller.currentView
@@ -78,8 +78,8 @@ private struct DropInputBar: View {
                     Group {
                         if justSaved {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(CraneColor.accent)
+                                .font(CraneFont.symbol(18, weight: .medium))
+                                .foregroundStyle(Color.craneInk)
                         } else {
                             CraneDropGlyph(
                                 dropType: linkMode ? .link : .thought,
@@ -89,7 +89,7 @@ private struct DropInputBar: View {
                         }
                     }
                     .shadow(
-                        color: justSaved ? CraneColor.accentGlow(for: colorScheme) : .clear,
+                        color: justSaved ? CraneColor.sage.opacity(0.25) : .clear,
                         radius: justSaved ? 10 : 0
                     )
                     .symbolRenderingMode(.hierarchical)
@@ -123,6 +123,7 @@ private struct DropInputBar: View {
             }
             .padding(.horizontal, DesignMetrics.inputPillHorizontalPadding)
             .padding(.vertical, DesignMetrics.inputPillVerticalPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .craneOverlayShell()
             .craneAccentFocusRing(isFocused: captureFocused && !justSaved)
             .overlay {
@@ -131,8 +132,6 @@ private struct DropInputBar: View {
                     .allowsHitTesting(false)
             }
             .opacity(shellOpacity)
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
 
             shortcutButtons
         }
@@ -163,7 +162,7 @@ private struct DropInputBar: View {
             Button("Open history") {
                 controller.currentView = .history
             }
-            .keyboardShortcut("h", modifiers: .command)
+            .keyboardShortcut("h", modifiers: [.command, .shift])
             Button("Hide") { hideAndReset() }
                 .keyboardShortcut(.cancelAction)
         }
@@ -255,53 +254,21 @@ private struct CaptureMirrorField: View {
     var isEnabled: Bool
     @FocusState.Binding var isFocused: Bool
     var onSubmit: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private static let captureFontSize: CGFloat = 22
-    private static let captureTracking: CGFloat = -0.15
 
     var body: some View {
-        let caretColor = CraneColor.caret(for: colorScheme)
-        ZStack(alignment: .leading) {
-            TextField("", text: $text)
-                .textFieldStyle(.plain)
-                .font(CraneFont.display(Self.captureFontSize))
-                .tracking(Self.captureTracking)
-                .foregroundStyle(Color.clear)
-                .tint(caretColor)
-                .focused($isFocused)
-                .disabled(!isEnabled)
-                .onSubmit(onSubmit)
-                .accessibilityLabel(placeholder)
-
-            if text.isEmpty {
-                Text(placeholder)
-                    .font(CraneFont.display(Self.captureFontSize))
-                    .tracking(Self.captureTracking)
-                    .foregroundStyle(Color.craneInkTertiary)
-                    .padding(.leading, isFocused ? 3 : 0)
-                    .offset(y: 2)
-                    .opacity(isFocused ? 0.55 : 1)
-                    .animation(
-                        CraneMotion.adaptive(.craneSubtle, reduceMotion: reduceMotion),
-                        value: isFocused
-                    )
-                    .frame(maxHeight: .infinity, alignment: .center)
-                    .allowsHitTesting(false)
-            } else {
-                Text(text)
-                    .font(CraneFont.display(Self.captureFontSize))
-                    .tracking(Self.captureTracking)
-                    .foregroundStyle(Color.craneInk)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .offset(y: 2)
-                    .frame(maxHeight: .infinity, alignment: .center)
-                    .allowsHitTesting(false)
-            }
-        }
-        .frame(height: DesignMetrics.inputRowHeight)
+        CraneMirrorTextField(
+            text: $text,
+            placeholder: placeholder,
+            font: CraneTextStyle.capture.font,
+            tracking: CraneTextStyle.capture.tracking,
+            height: DesignMetrics.inputRowHeight,
+            verticalNudge: 2,
+            focusedLeadingPadding: 3,
+            isEnabled: isEnabled,
+            accessibilityLabel: placeholder,
+            isFocused: $isFocused,
+            onSubmit: onSubmit
+        )
     }
 }
 
@@ -310,9 +277,7 @@ private struct CaptureMirrorField: View {
 private struct CaptureModeSegment: View {
     @Binding var linkMode: Bool
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @State private var modePulse = false
+    @Namespace private var segmentNamespace
 
     var body: some View {
         HStack(spacing: 2) {
@@ -321,37 +286,31 @@ private struct CaptureModeSegment: View {
         }
         .padding(3)
         .background(Color.craneInk.opacity(0.05), in: Capsule(style: .continuous))
-        .scaleEffect(modePulse ? 1.03 : 1)
         .fixedSize()
-        .onChange(of: linkMode) { _, _ in
-            guard !reduceMotion else { return }
-            withAnimation(.craneSnappy) { modePulse = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                withAnimation(.craneSnappy) { modePulse = false }
-            }
-        }
     }
 
     private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(CraneFont.ui(13, weight: .medium))
-                .foregroundStyle(selected ? CraneColor.cream : Color.craneInkTertiary)
+                .foregroundStyle(selected ? Color.craneInk : Color.craneInkTertiary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background {
                     if selected {
                         Capsule(style: .continuous)
-                            .fill(CraneColor.accentFill(for: colorScheme))
+                            .fill(CraneColor.recessFill(for: colorScheme))
                             .overlay {
                                 Capsule(style: .continuous)
-                                    .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: 0.5)
+                                    .strokeBorder(CraneColor.creamLine, lineWidth: 0.5)
                             }
+                            .matchedGeometryEffect(id: "selectedSegment", in: segmentNamespace)
                     }
                 }
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .animation(.craneSnappy, value: linkMode)
     }
 }
 
@@ -363,7 +322,7 @@ private struct LinkValidationHint: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(CraneFont.symbol(12, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
             Text(message)
                 .lineLimit(2)
@@ -381,11 +340,11 @@ private struct SavedHint: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "checkmark")
-                .font(.system(size: 11, weight: .semibold))
+                .font(CraneFont.symbol(11, weight: .semibold))
             Text("Saved")
         }
         .font(CraneFont.ui(14, weight: .medium))
-        .foregroundStyle(CraneColor.accent)
+        .foregroundStyle(Color.craneInkSecondary)
     }
 }
 
@@ -403,7 +362,7 @@ private struct HintChips: View {
                 Text(linkMode ? "thought" : "link")
                 HintKey("esc")
                 Text("dismiss")
-                HintKey("⌘H")
+                HintKey("⌘⇧H")
                 Text("history")
             }
             .font(CraneFont.mono(13))

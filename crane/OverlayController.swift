@@ -22,12 +22,18 @@ enum OverlayView: Equatable {
 @MainActor
 final class OverlayController {
 
-    /// Logical sizes. Input panel hugs the 64pt capture pill with 12pt of
-    /// transparent padding on each side; history keeps the original 480pt
-    /// height so the list has room to scroll.
-    /// Two-row capture pill: input row + hint row + padding.
-    static let inputSize  = NSSize(width: 620, height: 132)
-    static let historySize = NSSize(width: 620, height: 480)
+    /// Logical sizes. The panel is the glass surface plus a transparent shadow
+    /// margin on every side, so the Liquid Glass drop shadow follows the rounded
+    /// shape instead of being clipped into a rectangle.
+    private static let shadowMargin = DesignMetrics.overlayShadowMargin
+    static let inputSize = NSSize(
+        width: DesignMetrics.overlayGlassWidth + shadowMargin * 2,
+        height: DesignMetrics.captureGlassHeight + shadowMargin * 2
+    )
+    static let historySize = NSSize(
+        width: DesignMetrics.overlayGlassWidth + shadowMargin * 2,
+        height: DesignMetrics.historyGlassHeight + shadowMargin * 2
+    )
 
     /// Currently displayed view. Mutating this animates the panel resize.
     var currentView: OverlayView = .input {
@@ -59,6 +65,7 @@ final class OverlayController {
 
     private let panel: OverlayPanel
     private var hostingView: NSHostingView<AnyView>?
+    private var glassView: NSGlassEffectView?
     private var screenObserver: NSObjectProtocol?
 
     init() {
@@ -86,18 +93,14 @@ final class OverlayController {
                 .modelContainer(Persistence.container)
         )
         let host = NSHostingView(rootView: wrapped)
-        host.frame = NSRect(origin: .zero, size: panel.frame.size)
-        host.autoresizingMask = [.width, .height]
-        // macOS 26 gives NSHostingView a translucent material backing by
-        // default, which shows up as a faint rounded rectangle behind the
-        // input pill (visible in the 12pt padding around the bar and the
-        // ~20pt of empty panel space below it). Force the backing layer
-        // fully clear so only the pill's own `.glassEffect` is visible.
-        host.wantsLayer = true
-        host.layer?.backgroundColor = NSColor.clear.cgColor
-        host.layer?.isOpaque = false
-        panel.contentView = host
+        let container = CraneGlassHost.wrap(
+            contentView: host,
+            containerSize: panel.frame.size,
+            margin: DesignMetrics.glassShadowMargin
+        )
+        panel.contentView = container
         hostingView = host
+        glassView = container.subviews.first as? NSGlassEffectView
     }
 
     // MARK: - Show / Hide / Toggle
@@ -200,6 +203,12 @@ final class OverlayController {
     }
 
     var isVisible: Bool { panel.isVisible }
+
+    /// Automated checks for the AppKit glass host (see `scripts/test-overlay-glass.sh`).
+    @MainActor
+    func verifyGlassSetupForTesting() -> OverlayGlassVerifier.Result {
+        OverlayGlassVerifier.verify(panel: panel, view: currentView)
+    }
 
     // MARK: - Layout
 

@@ -90,4 +90,20 @@ enum CraneAlert {
         alert.alertStyle = .warning
         alert.runModal()
     }
+
+    /// Returns `true` when the user confirms deleting all entries.
+    @MainActor
+    static func confirmResetAllData() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Delete all entries?"
+        alert.informativeText =
+            "Every thought and link in crane will be removed. This can’t be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Delete All")
+        if let deleteButton = alert.buttons.last {
+            deleteButton.hasDestructiveAction = true
+        }
+        return alert.runModal() == .alertSecondButtonReturn
+    }
 }

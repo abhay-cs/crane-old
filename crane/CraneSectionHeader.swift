@@ -13,12 +13,50 @@ struct CraneSectionHeader: View {
         case neutral
     }
 
-    var caps: String? = nil
-    var capsEmphasis: CapsEmphasis = .neutral
-    var title: String? = nil
+    enum LabelStyle {
+        /// Legacy ALL CAPS mono labels (history overlay, etc.).
+        case caps(CapsEmphasis)
+        /// Journal section titles — Instrument Serif, sentence case.
+        case journal
+        /// Utility section titles — Geist semibold.
+        case utility
+    }
+
+    var label: String
+    var labelStyle: LabelStyle = .utility
     var trailing: String?
     var trailingActionTitle: String?
     var trailingAction: (() -> Void)?
+
+    /// Caps-style header (overlay / legacy surfaces).
+    init(
+        caps: String,
+        capsEmphasis: CapsEmphasis = .neutral,
+        trailing: String? = nil,
+        trailingActionTitle: String? = nil,
+        trailingAction: (() -> Void)? = nil
+    ) {
+        label = caps
+        labelStyle = .caps(capsEmphasis)
+        self.trailing = trailing
+        self.trailingActionTitle = trailingActionTitle
+        self.trailingAction = trailingAction
+    }
+
+    /// Journal or utility title header.
+    init(
+        title: String,
+        style: LabelStyle = .utility,
+        trailing: String? = nil,
+        trailingActionTitle: String? = nil,
+        trailingAction: (() -> Void)? = nil
+    ) {
+        label = title
+        labelStyle = style
+        self.trailing = trailing
+        self.trailingActionTitle = trailingActionTitle
+        self.trailingAction = trailingAction
+    }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -30,23 +68,25 @@ struct CraneSectionHeader: View {
 
     @ViewBuilder
     private var headerLabel: some View {
-        if let caps {
-            Text(caps)
+        switch labelStyle {
+        case .caps(let emphasis):
+            Text(label)
                 .font(CraneFont.mono(12, weight: .medium))
                 .tracking(1.6)
                 .textCase(.uppercase)
-                .foregroundStyle(capsForeground)
-        } else if let title {
-            Text(title)
-                .font(CraneFont.ui(13, weight: .semibold))
-                .tracking(0.4)
-                .foregroundStyle(Color.craneInk)
+                .foregroundStyle(capsForeground(for: emphasis))
+        case .journal:
+            Text(label)
+                .craneText(.journalSection)
+        case .utility:
+            Text(label)
+                .craneText(.section)
         }
     }
 
-    private var capsForeground: Color {
-        switch capsEmphasis {
-        case .accent: CraneColor.accent
+    private func capsForeground(for emphasis: CapsEmphasis) -> Color {
+        switch emphasis {
+        case .accent: CraneColor.sage
         case .neutral: Color.craneInkTertiary
         }
     }
@@ -55,8 +95,7 @@ struct CraneSectionHeader: View {
     private var trailingContent: some View {
         if let trailing {
             Text(trailing)
-                .font(CraneFont.ui(12, weight: .medium))
-                .foregroundStyle(.craneInkTertiary)
+                .craneText(.meta)
         } else if let trailingActionTitle, let trailingAction {
             CraneSecondaryButton(action: trailingAction) {
                 Text(trailingActionTitle)

@@ -172,14 +172,15 @@ Semantic colors replace the old `.primary` / `.secondary` ladder on branded surf
 
 | Modifier | Material | Notes |
 |---|---|---|
-| `.craneOverlayShell()` | `.regularMaterial` + `CraneSurface` tint + specular | Capture pill, history card (hosts focused fields — **no** Liquid Glass) |
-| `.craneCard()` | `.regularMaterial` + accent soft fill | Dashboard stat cards, count badges |
-| `.craneInputRecess()` | `.regularMaterial` + ink 6% | Search field, shortcut keys |
-| `.craneRowHighlight()` | `.regularMaterial` + `CraneThought` 12% | List row hover |
+| `.craneOverlayShell()` | Transparent — glass drawn by AppKit `NSGlassEffectView` host | Capture pill, history card |
+| `.craneDashboardBackground()` | Transparent — glass drawn by AppKit `NSGlassEffectView` on the menu-bar window | Dashboard popover |
+| `.craneCard()` | Inset wash on glass dashboard | Dashboard stat cards, count badges |
+| `.craneInputRecess()` | Flat ink 6% fill | Search field, shortcut keys (inside glass) |
+| `.craneRowHighlight()` | Flat accent / ink fill | List row hover (inside glass) |
 
 **Corner radii:** 22 (shell), 16 (cards), 10 (controls/chips), 8 (rows). All `.continuous`.
 
-**Specular border:** cream gradient (dark) or ink gradient (light) at 0.5pt — reads as edge light, not outline. **No drop shadows.**
+**Liquid Glass:** overlay and dashboard shells render glass with AppKit `NSGlassEffectView` (corner radius 22, `.regular`) wrapping the SwiftUI host, inset by a 30pt transparent shadow margin so drop shadows follow the rounded shape. Inset controls use flat fills to avoid glass-on-glass.
 
 ### Typography
 

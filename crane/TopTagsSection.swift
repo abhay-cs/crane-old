@@ -27,10 +27,7 @@ struct TopTagsSection: View {
     var body: some View {
         if hasAnyDrops {
             VStack(alignment: .leading, spacing: 8) {
-                CraneSectionHeader(
-                    caps: "TOP TAGS",
-                    trailing: isTagging && topTags.isEmpty ? "Tagging…" : nil
-                )
+                CraneSectionHeader(title: "Topics", style: .journal, trailing: isTagging && topTags.isEmpty ? "Tagging…" : nil)
 
                 if !topTags.isEmpty {
                     FlowLayout(spacing: 6) {
@@ -46,7 +43,7 @@ struct TopTagsSection: View {
                     TagSkeletonRow()
                 } else {
                     Text("Tags appear on your thoughts after capture.")
-                        .font(CraneFont.ui(14))
+                        .font(CraneFont.ui(13))
                         .foregroundStyle(Color.craneInkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -84,7 +81,7 @@ private struct AIUnavailableBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "sparkles")
-                .font(.system(size: 12, weight: .semibold))
+                .font(CraneFont.symbol(12, weight: .semibold))
                 .foregroundStyle(Color.craneInkTertiary)
                 .padding(.top, 1)
             Text(message)

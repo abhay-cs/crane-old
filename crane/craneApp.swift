@@ -29,5 +29,38 @@ struct craneApp: App {
         // exact instance in `OverlayController.attach(rootView:)` so the
         // dashboard sees writes made from the capture pill live.
         .modelContainer(Persistence.container)
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("Write…") {
+                    AppDelegate.shared?.showOverlay()
+                }
+                .keyboardShortcut(" ", modifiers: [.command, .shift])
+            }
+
+            CommandMenu("Capture") {
+                Button("Open History") {
+                    AppDelegate.shared?.showOverlayHistory()
+                }
+                .keyboardShortcut("h", modifiers: [.command, .shift])
+
+                Button("Focus Search") {
+                    AppDelegate.shared?.showOverlayHistory()
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Divider()
+
+                Button("Reset All Data…") {
+                    AppDelegate.shared?.confirmAndResetAllData()
+                }
+            }
+
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit crane") {
+                    NSApp.terminate(nil)
+                }
+                .keyboardShortcut("q", modifiers: .command)
+            }
+        }
     }
 }

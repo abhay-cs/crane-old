@@ -43,7 +43,7 @@ struct TagChip: View {
             .overlay {
                 if isInteractive && hovering {
                     Capsule(style: .continuous)
-                        .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: 0.5)
+                        .strokeBorder(CraneColor.sageLine(for: colorScheme), lineWidth: 0.5)
                 }
             }
             .lineLimit(1)
@@ -61,19 +61,19 @@ struct TagChip: View {
         case .compact:
             return Color.craneInkSecondary
         case .dashboard:
-            return isInteractive && hovering ? CraneColor.accent : Color.craneInkSecondary
+            return isInteractive && hovering ? Color.craneInk : Color.craneInkSecondary
         }
     }
 
     private var backgroundFill: AnyShapeStyle {
         switch style {
         case .compact:
-            return AnyShapeStyle(Color.craneInk.opacity(0.06))
+            return AnyShapeStyle(CraneColor.recessFill(for: colorScheme))
         case .dashboard:
             if isInteractive && hovering {
-                return AnyShapeStyle(CraneColor.accentSoft(for: colorScheme))
+                return AnyShapeStyle(CraneColor.sage.opacity(colorScheme == .dark ? 0.22 : 0.16))
             }
-            return AnyShapeStyle(Color.craneInk.opacity(0.06))
+            return AnyShapeStyle(CraneColor.sageSoft(for: colorScheme))
         }
     }
 }

@@ -18,4 +18,16 @@ extension ModelContext {
             CraneAlert.presentSaveFailed(error)
         }
     }
+
+    /// Removes every drop from the store. Used by Reset All Data.
+    @MainActor
+    func deleteAllDrops() {
+        do {
+            try delete(model: Drop.self)
+            try save()
+        } catch {
+            rollback()
+            CraneAlert.presentSaveFailed(error)
+        }
+    }
 }

@@ -53,9 +53,8 @@ struct HistoryView: View {
             searchField
             listContent
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .craneOverlayShell()
-        .clipShape(RoundedRectangle(cornerRadius: DesignMetrics.surfaceCornerRadius, style: .continuous))
-        .padding(12)
         .background {
             Button("Back") { goBack() }
                 .keyboardShortcut(.cancelAction)
@@ -68,7 +67,7 @@ struct HistoryView: View {
                 search = seed
                 debouncedSearch = seed
             }
-            searchFocused = true
+            focusSearchField()
             refreshStoreTotalCount()
         }
         .onChange(of: drops.count) { _, _ in refreshStoreTotalCount() }
@@ -95,9 +94,7 @@ struct HistoryView: View {
             )
 
             Text("History")
-                .font(CraneFont.display(20))
-                .tracking(-0.2)
-                .foregroundStyle(Color.craneInk)
+                .craneText(.title)
 
             Text("· \(storeTotalCount)")
                 .font(CraneFont.ui(13, weight: .medium))
@@ -105,7 +102,7 @@ struct HistoryView: View {
 
             Spacer()
         }
-        .padding(.horizontal, DesignMetrics.md + 2)
+        .padding(.horizontal, DesignMetrics.overlayContentInset)
         .padding(.top, 14)
         .padding(.bottom, 10)
     }
@@ -129,17 +126,18 @@ struct HistoryView: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(Color.craneInkTertiary)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(CraneFont.symbol(13, weight: .medium))
 
-                TextField("Filter by text, type, or tags…", text: $search)
-                    .textFieldStyle(.plain)
-                    .focused($searchFocused)
-                    .font(CraneFont.ui(14))
-                    .foregroundStyle(Color.craneInk)
-                    .tint(CraneColor.accent)
-                    .disableAutocorrection(true)
-                    .accessibilityLabel("Search drops")
-                    .accessibilityHint("Filters by text, type, tags, or source app")
+                CraneMirrorTextField(
+                    text: $search,
+                    placeholder: "Filter by text, type, or tags…",
+                    font: CraneFont.ui(14),
+                    verticalNudge: -1,
+                    focusedLeadingPadding: 5,
+                    accessibilityLabel: "Search drops",
+                    accessibilityHint: "Filters by text, type, tags, or source app",
+                    isFocused: $searchFocused
+                )
 
                 if !search.isEmpty {
                     CraneIconButton(
@@ -156,7 +154,7 @@ struct HistoryView: View {
             .craneInputRecess()
             .overlay {
                 RoundedRectangle(cornerRadius: DesignMetrics.controlCornerRadius, style: .continuous)
-                    .strokeBorder(CraneColor.accentLine(for: colorScheme), lineWidth: searchFocused ? 0.5 : 0)
+                    .strokeBorder(CraneColor.focusLine(for: colorScheme), lineWidth: searchFocused ? 0.75 : 0)
                     .animation(
                         CraneMotion.adaptive(.craneSnappy, reduceMotion: reduceMotion),
                         value: searchFocused
@@ -164,7 +162,7 @@ struct HistoryView: View {
                     .allowsHitTesting(false)
             }
         }
-        .padding(.horizontal, DesignMetrics.md + 2)
+        .padding(.horizontal, DesignMetrics.overlayContentInset)
         .padding(.bottom, 12)
         .craneDivider()
         .background {
@@ -212,7 +210,7 @@ struct HistoryView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(alignment: .leading, spacing: 4) {
+                    LazyVStack(alignment: .leading, spacing: DesignMetrics.sm) {
                         if isSearching {
                             ForEach(items) { drop in
                                 historyRow(for: drop)
@@ -220,13 +218,12 @@ struct HistoryView: View {
                             }
                         } else {
                             ForEach(items.groupedByDaySection(), id: \.title) { section in
-                                Text(section.title.uppercased())
-                                    .font(CraneFont.ui(12, weight: .semibold))
-                                    .tracking(0.6)
-                                    .foregroundStyle(Color.craneInkTertiary)
-                                    .padding(.top, 8)
-                                    .padding(.bottom, 2)
-                                    .padding(.horizontal, 4)
+                                Text(section.title)
+                                    .craneText(.journalBody)
+                                    .foregroundStyle(Color.craneInkSecondary)
+                                    .padding(.top, DesignMetrics.md)
+                                    .padding(.bottom, DesignMetrics.xs)
+                                    .padding(.horizontal, DesignMetrics.overlayContentInset)
 
                                 ForEach(section.drops) { drop in
                                     historyRow(for: drop)
@@ -237,14 +234,12 @@ struct HistoryView: View {
 
                         if isListCapped {
                             Text(cappedListMessage)
-                                .font(CraneFont.ui(11))
-                                .foregroundStyle(Color.craneInkTertiary)
-                                .padding(.top, 8)
-                                .padding(.horizontal, 4)
+                                .craneText(.meta)
+                                .padding(.top, DesignMetrics.sm)
+                                .padding(.horizontal, DesignMetrics.overlayContentInset)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, DesignMetrics.sm)
                 }
                 .onAppear { scrollToFocusedDrop(in: items, proxy: proxy) }
                 .onChange(of: controller.scrollToken) { _, _ in
@@ -278,6 +273,10 @@ struct HistoryView: View {
         storeTotalCount = (try? modelContext.fetchCount(FetchDescriptor<Drop>())) ?? drops.count
     }
 
+    private func focusSearchField() {
+        DispatchQueue.main.async { searchFocused = true }
+    }
+
     private func clearSearch() {
         searchDebounceTask?.cancel()
         search = ""
@@ -290,7 +289,7 @@ struct HistoryView: View {
     }
 
     private func delete(_ drop: Drop) {
-        withAnimation(CraneMotion.adaptive(.easeOut(duration: 0.15), reduceMotion: reduceMotion)) {
+        withAnimation(CraneMotion.adaptive(.craneSpring, reduceMotion: reduceMotion)) {
             modelContext.deleteDrop(drop)
             refreshStoreTotalCount()
         }

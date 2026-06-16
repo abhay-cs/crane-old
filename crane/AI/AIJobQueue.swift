@@ -63,6 +63,12 @@ final class AIJobQueue {
         drain()
     }
 
+    /// Clears queued tag jobs (e.g. after a full data reset).
+    func cancelAll() {
+        pending.removeAll()
+        syncPublishedState()
+    }
+
     /// Tags untagged drops, capped and staggered so launch doesn’t flood the inference provider.
     func backfillUntaggedDrops(limit: Int = 10) {
         guard case .available = service.tagAvailability else { return }

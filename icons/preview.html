@@ -40,31 +40,63 @@
       align-items: center;
     }
     .menubar-wrap img { filter: brightness(0) invert(1); }
+    .card-wide { grid-column: 1 / -1; max-width: 640px; }
   </style>
 </head>
 <body>
   <h1>crane logo directions</h1>
-  <p class="lead">Open this file in a browser. Cream on blue at 512px; menu bar marks use currentColor (shown white on dark chrome).</p>
+  <p class="lead">Open this file in a browser. Cream on blue at 512px; direction E also shows photo palette and logo mark. Menu bar marks use currentColor (shown white on dark chrome).</p>
   <div class="grid" id="grid"></div>
   <script>
     const dirs = [
-      { folder: 'direction-a-neck-drop', title: 'A — Neck + drop', desc: 'Crane profile; beak dot is a captured thought.' },
-      { folder: 'direction-b-cr-hybrid', title: 'B — cr. hybrid', desc: 'Current wordmark + subtle neck; period = drop.' },
-      { folder: 'direction-c-origami', title: 'C — Origami', desc: 'Folded paper crane; thought tucked away.' },
-      { folder: 'direction-d-wingspan', title: 'D — Wingspan', desc: 'Abstract lift arc + drop at apex.' },
+      { folder: 'direction-a-neck-drop', title: 'A — Neck + drop', desc: 'Crane profile; beak dot is a captured thought.', app: 'app-512.svg' },
+      { folder: 'direction-b-cr-hybrid', title: 'B — cr. hybrid', desc: 'Current wordmark + subtle neck; period = drop.', app: 'app-512.svg' },
+      { folder: 'direction-c-origami', title: 'C — Origami', desc: 'Folded paper crane; thought tucked away.', app: 'app-512.svg' },
+      { folder: 'direction-d-wingspan', title: 'D — Wingspan', desc: 'Abstract lift arc + drop at apex. Production.', app: 'app-512.svg' },
     ];
-    document.getElementById('grid').innerHTML = dirs.map(function (d) {
-      return '<article class="card">' +
+    const eDir = {
+      folder: 'direction-e-bird-profile',
+      title: 'E — Bird profile',
+      desc: 'From reference photo. Orange+black and blue+cream app variants. Exploration only.',
+    };
+    function cardHtml(d, extra) {
+      var appSrc = d.folder + '/' + (d.app || 'app-512.svg');
+      var html = '<article class="card' + (extra || '') + '">' +
         '<h2>' + d.title + '</h2>' +
         '<p class="desc">' + d.desc + '</p>' +
-        '<div class="row">' +
-          '<div><div class="label">App 512</div>' +
-          '<img src="' + d.folder + '/app-512.svg" width="128" height="128" alt="' + d.title + ' app"/></div>' +
-          '<div><div class="label">Menu bar 16</div>' +
-          '<div class="menubar-wrap">' +
-          '<img src="' + d.folder + '/menubar-16.svg" width="16" height="16" alt="' + d.title + ' menubar"/>' +
-          '</div></div></div></article>';
-    }).join('');
+        '<div class="row">';
+      if (d.logo) {
+        html += '<div><div class="label">Logo 512</div>' +
+          '<img src="' + d.folder + '/logo-512.svg" width="128" height="128" alt="' + d.title + ' logo"/></div>';
+      }
+      if (d.appPhoto) {
+        html += '<div><div class="label">App photo</div>' +
+          '<img src="' + d.folder + '/app-512-photo.svg" width="128" height="128" alt="' + d.title + ' app photo"/></div>';
+      }
+      if (d.appBrand) {
+        html += '<div><div class="label">App brand</div>' +
+          '<img src="' + d.folder + '/app-512-brand.svg" width="128" height="128" alt="' + d.title + ' app brand"/></div>';
+      }
+      if (!d.appPhoto && !d.appBrand) {
+        html += '<div><div class="label">App 512</div>' +
+          '<img src="' + appSrc + '" width="128" height="128" alt="' + d.title + ' app"/></div>';
+      }
+      html += '<div><div class="label">Menu bar 16</div>' +
+        '<div class="menubar-wrap">' +
+        '<img src="' + d.folder + '/menubar-16.svg" width="16" height="16" alt="' + d.title + ' menubar"/>' +
+        '</div></div></div></article>';
+      return html;
+    }
+    var grid = document.getElementById('grid');
+    grid.innerHTML = dirs.map(function (d) { return cardHtml(d); }).join('') +
+      cardHtml({
+        folder: eDir.folder,
+        title: eDir.title,
+        desc: eDir.desc,
+        logo: true,
+        appPhoto: true,
+        appBrand: true,
+      }, ' card-wide');
   </script>
 </body>
 </html>

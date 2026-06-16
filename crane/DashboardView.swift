@@ -16,6 +16,11 @@ struct DashboardView: View {
 
     @State private var stats: DropStatistics = .empty
     @State private var headerHovering = false
+    #if DEBUG
+    @State private var pendingSeedConfirmation = false
+    @State private var seedingSampleData = false
+    @State private var seedReplaceHovering = false
+    #endif
 
     init() {
         var descriptor = FetchDescriptor<Drop>(
@@ -125,24 +130,20 @@ struct DashboardView: View {
     private var activitySection: some View {
         let breakdown = stats.typeBreakdown
         let hasTypeData = breakdown.thoughts + breakdown.links > 0
-        let hasActivityData = stats.totalCount > 0
-            && stats.dailyCounts.contains { $0.count > 0 }
+        let showActivityChart = stats.totalCount > 0
 
         return VStack(alignment: .leading, spacing: DesignMetrics.sm) {
             CraneSectionHeader(caps: "Activity", capsEmphasis: .neutral, trailing: "14 days")
 
             Group {
-                if hasActivityData {
+                if showActivityChart {
                     ActivityChart(points: stats.dailyCounts)
                 } else {
-                    ActivityEmptyState {
-                        DispatchQueue.main.async {
-                            AppDelegate.shared?.showOverlay()
-                        }
-                    }
+                    ActivityEmptyState()
+                        .clipped()
                 }
             }
-            .frame(height: 72)
+            .frame(height: DesignMetrics.dashboardActivityChartHeight)
 
             typeBreakdownSlot(hasTypeData: hasTypeData, breakdown: breakdown)
         }
@@ -190,11 +191,7 @@ struct DashboardView: View {
 
             let items = Array(recentDrops.prefix(2))
             if items.isEmpty {
-                RecentEmptyState {
-                    DispatchQueue.main.async {
-                        AppDelegate.shared?.showOverlay()
-                    }
-                }
+                RecentEmptyState()
             } else {
                 VStack(spacing: DesignMetrics.xs) {
                     ForEach(items) { drop in
@@ -219,38 +216,112 @@ struct DashboardView: View {
                 .fill(CraneColor.creamLine)
                 .frame(height: 0.5)
 
-            HStack(spacing: DesignMetrics.sm) {
+            #if DEBUG
+            if pendingSeedConfirmation {
+                seedConfirmationFooter
+            } else {
+                defaultFooter
+            }
+            #else
+            defaultFooter
+            #endif
+        }
+    }
+
+    private var defaultFooter: some View {
+        HStack(spacing: DesignMetrics.sm) {
             CranePrimaryButton {
                 DispatchQueue.main.async {
                     AppDelegate.shared?.showOverlay()
                 }
             } label: {
-                    HStack(spacing: 6) {
-                        Text("New Drop")
-                        Text("⌘⇧Space")
-                            .font(CraneFont.mono(10, weight: .medium))
-                            .foregroundStyle(CraneColor.cream.opacity(0.85))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background {
-                                RoundedRectangle(cornerRadius: DesignMetrics.xs + 2, style: .continuous)
-                                    .fill(Color.craneInk.opacity(0.18))
-                            }
-                    }
-                }
-
-                Spacer()
-
-                CraneTertiaryButton {
-                    NSApp.terminate(nil)
-                } label: {
-                    Text("Quit")
+                HStack(spacing: 6) {
+                    Text("New Drop")
+                    Text("⌘⇧Space")
+                        .font(CraneFont.mono(10, weight: .medium))
+                        .foregroundStyle(CraneColor.cream.opacity(0.85))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background {
+                            RoundedRectangle(cornerRadius: DesignMetrics.xs + 2, style: .continuous)
+                                .fill(Color.craneInk.opacity(0.18))
+                        }
                 }
             }
-            .padding(.horizontal, DesignMetrics.md)
-            .padding(.vertical, DesignMetrics.sm)
+
+            Spacer()
+
+            #if DEBUG
+            CraneTertiaryButton {
+                pendingSeedConfirmation = true
+            } label: {
+                Text(seedingSampleData ? "Seeding…" : "Seed week")
+            }
+            .disabled(seedingSampleData)
+            #endif
+
+            CraneTertiaryButton {
+                NSApp.terminate(nil)
+            } label: {
+                Text("Quit")
+            }
         }
+        .padding(.horizontal, DesignMetrics.md)
+        .padding(.vertical, DesignMetrics.sm)
     }
+
+    #if DEBUG
+    private var seedConfirmationFooter: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Load sample week?")
+                    .font(CraneFont.ui(13, weight: .semibold))
+                    .foregroundStyle(Color.craneInk)
+                Text("7 days · 10–15/day")
+                    .font(CraneFont.ui(10))
+                    .foregroundStyle(Color.craneInkTertiary)
+            }
+
+            Spacer(minLength: 4)
+
+            CraneSecondaryButton {
+                pendingSeedConfirmation = false
+            } label: {
+                Text("Cancel")
+            }
+
+            CraneTertiaryButton {
+                loadSampleWeek(clearFirst: false)
+                pendingSeedConfirmation = false
+            } label: {
+                Text("Append")
+            }
+            .disabled(seedingSampleData)
+
+            Button("Replace") {
+                loadSampleWeek(clearFirst: true)
+                pendingSeedConfirmation = false
+            }
+            .buttonStyle(.plain)
+            .font(CraneFont.ui(13, weight: .semibold))
+            .foregroundStyle(Color.craneWarning)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background {
+                if seedReplaceHovering {
+                    RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
+                        .fill(Color.craneWarning.opacity(0.12))
+                }
+            }
+            .onHover { seedReplaceHovering = $0 }
+            .animation(.craneSnappy, value: seedReplaceHovering)
+            .disabled(seedingSampleData)
+        }
+        .padding(.horizontal, DesignMetrics.md)
+        .padding(.vertical, DesignMetrics.sm)
+        .animation(.craneSnappy, value: pendingSeedConfirmation)
+    }
+    #endif
 
     // MARK: - Actions
 
@@ -267,6 +338,20 @@ struct DashboardView: View {
             AppDelegate.shared?.showOverlayHistory(focusing: dropID, search: search)
         }
     }
+
+    #if DEBUG
+    private func loadSampleWeek(clearFirst: Bool) {
+        seedingSampleData = true
+        do {
+            let count = try DummyDataSeeder.seedWeekOfUsage(in: modelContext, clearFirst: clearFirst)
+            refreshStatistics()
+            print("crane: seeded \(count) sample drops")
+        } catch {
+            print("crane: sample seed failed: \(error)")
+        }
+        seedingSampleData = false
+    }
+    #endif
 }
 
 // MARK: - Stat card
@@ -314,18 +399,19 @@ private struct StatCard: View {
 
 // MARK: - Activity chart
 
+private enum ActivityChartMetrics {
+    static let tooltipHeight: CGFloat = 38
+    static let tooltipGap: CGFloat = 6
+    static let plotInset: CGFloat = 2
+}
+
 private struct ActivityChart: View {
     let points: [(date: Date, count: Int)]
 
-    @State private var selectedDate: Date?
-    @State private var hoveredDate: Date?
+    @State private var hoveredDay: Date?
 
     private var calendar: Calendar { Calendar.current }
     private var today: Date { calendar.startOfDay(for: Date()) }
-
-    private var activeDate: Date? {
-        hoveredDate ?? selectedDate
-    }
 
     var body: some View {
         Chart {
@@ -337,29 +423,6 @@ private struct ActivityChart: View {
                 .foregroundStyle(barColor(for: point))
                 .cornerRadius(2)
                 .opacity(barOpacity(for: point))
-            }
-
-            if let activeDate, let point = point(matching: activeDate), point.count > 0 {
-                PointMark(
-                    x: .value("Day", point.date, unit: .day),
-                    y: .value("Count", point.count)
-                )
-                .symbolSize(0)
-                .annotation(position: .top, spacing: 4) {
-                    ChartDayTooltip(date: point.date, count: point.count)
-                }
-            } else if hoveredDate == nil, let todayPoint = point(matching: today), todayPoint.count > 0 {
-                PointMark(
-                    x: .value("Day", todayPoint.date, unit: .day),
-                    y: .value("Count", todayPoint.count)
-                )
-                .symbolSize(0)
-                .annotation(position: .top, spacing: 4) {
-                    Text("\(todayPoint.count)")
-                        .font(CraneFont.mono(10, weight: .medium))
-                        .foregroundStyle(CraneColor.accent)
-                        .monospacedDigit()
-                }
             }
         }
         .chartXAxis {
@@ -387,37 +450,100 @@ private struct ActivityChart: View {
             }
         }
         .chartYAxis(.hidden)
-        .chartXSelection(value: $selectedDate)
         .chartOverlay { proxy in
             GeometryReader { geometry in
-                Rectangle()
-                    .fill(.clear)
-                    .contentShape(Rectangle())
-                    .onContinuousHover { phase in
-                        switch phase {
-                        case .active(let location):
-                            let origin = geometry[proxy.plotAreaFrame].origin
-                            let x = location.x - origin.x
-                            hoveredDate = proxy.value(atX: x, as: Date.self)
-                        case .ended:
-                            hoveredDate = nil
+                let plotFrame = geometry[proxy.plotAreaFrame]
+
+                ZStack(alignment: .topLeading) {
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                updateHover(at: location, plotOrigin: plotFrame.origin, proxy: proxy)
+                            case .ended:
+                                hoveredDay = nil
+                            }
                         }
-                    }
+
+                    chartTooltip(in: plotFrame, proxy: proxy)
+                }
             }
         }
         .chartPlotStyle { plot in
             plot.background(Color.clear)
         }
-        .animation(.craneSnappy, value: hoveredDate)
-        .animation(.craneSnappy, value: selectedDate)
+    }
+
+    @ViewBuilder
+    private func chartTooltip(in plotFrame: CGRect, proxy: ChartProxy) -> some View {
+        if let hoveredDay, let count = count(on: hoveredDay), count > 0,
+           let anchor = tooltipPosition(
+               in: plotFrame,
+               day: hoveredDay,
+               count: count,
+               proxy: proxy,
+               labelHeight: ActivityChartMetrics.tooltipHeight
+           ) {
+            ChartDayTooltip(date: hoveredDay, count: count)
+                .position(anchor)
+        } else if hoveredDay == nil, let todayCount = count(on: today), todayCount > 0,
+                  let anchor = tooltipPosition(
+                      in: plotFrame,
+                      day: today,
+                      count: todayCount,
+                      proxy: proxy,
+                      labelHeight: 16
+                  ) {
+            Text("\(todayCount)")
+                .font(CraneFont.mono(10, weight: .medium))
+                .foregroundStyle(CraneColor.accent)
+                .monospacedDigit()
+                .position(x: anchor.x, y: anchor.y)
+        }
+    }
+
+    private func updateHover(at location: CGPoint, plotOrigin: CGPoint, proxy: ChartProxy) {
+        let x = location.x - plotOrigin.x
+        guard let date = proxy.value(atX: x, as: Date.self) else { return }
+        let day = calendar.startOfDay(for: date)
+        if let hoveredDay, calendar.isDate(hoveredDay, inSameDayAs: day) { return }
+        hoveredDay = day
+    }
+
+    /// Positions a hover label fully inside the plot area, centered above the bar when possible.
+    private func tooltipPosition(
+        in plotFrame: CGRect,
+        day: Date,
+        count: Int,
+        proxy: ChartProxy,
+        labelHeight: CGFloat
+    ) -> CGPoint? {
+        guard let x = proxy.position(forX: day),
+              let barTopY = proxy.position(forY: count) else { return nil }
+
+        let absoluteX = plotFrame.origin.x + x
+        let barTopAbsoluteY = plotFrame.origin.y + barTopY
+        let halfLabel = labelHeight / 2
+        let inset = ActivityChartMetrics.plotInset
+
+        let idealCenterY = barTopAbsoluteY
+            - ActivityChartMetrics.tooltipGap
+            - halfLabel
+        let minCenterY = plotFrame.minY + halfLabel + inset
+        let maxCenterY = plotFrame.maxY - halfLabel - inset
+        let centerY = min(max(idealCenterY, minCenterY), maxCenterY)
+
+        return CGPoint(x: absoluteX, y: centerY)
+    }
+
+    private func count(on day: Date) -> Int? {
+        points.first { calendar.isDate($0.date, inSameDayAs: day) }?.count
     }
 
     private var axisDates: [Date] {
         points.map(\.date)
-    }
-
-    private func point(matching date: Date) -> (date: Date, count: Int)? {
-        points.first { calendar.isDate($0.date, inSameDayAs: date) }
     }
 
     private func isWeekStart(_ date: Date) -> Bool {
@@ -440,8 +566,8 @@ private struct ActivityChart: View {
     }
 
     private func barOpacity(for point: (date: Date, count: Int)) -> Double {
-        guard let activeDate else { return 1 }
-        if calendar.isDate(point.date, inSameDayAs: activeDate) { return 1 }
+        guard let hoveredDay else { return 1 }
+        if calendar.isDate(point.date, inSameDayAs: hoveredDay) { return 1 }
         return 0.35
     }
 }
@@ -467,75 +593,59 @@ private struct ChartDayTooltip: View {
         .background {
             RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
                 .fill(CraneColor.cardWash(for: colorScheme))
-                .background {
-                    RoundedRectangle(cornerRadius: DesignMetrics.rowCornerRadius, style: .continuous)
-                        .fill(.regularMaterial)
-                }
         }
         .specularBorder(cornerRadius: DesignMetrics.rowCornerRadius)
     }
 }
 
 private struct ActivityEmptyState: View {
-    let action: () -> Void
-
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
                 Image(systemName: "chart.bar")
-                    .font(.system(size: 18, weight: .light))
+                    .font(.system(size: 15, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
 
             Text("No activity yet")
-                .font(CraneFont.display(16))
-                .tracking(-0.15)
-                .foregroundStyle(Color.craneInk)
-
-            CranePrimaryButton(action: action) {
-                Text("Capture drop")
-            }
+                .font(CraneFont.ui(13, weight: .medium))
+                .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No activity yet. Use New Drop in the footer to capture.")
     }
 }
 
 private struct RecentEmptyState: View {
-    let action: () -> Void
-
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
                 Image(systemName: "tray")
-                    .font(.system(size: 18, weight: .light))
+                    .font(.system(size: 15, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
 
             Text("Nothing held yet.")
-                .font(CraneFont.display(16))
-                .tracking(-0.15)
-                .foregroundStyle(Color.craneInk)
-
-            CranePrimaryButton(action: action) {
-                Text("Capture drop")
-            }
+                .font(CraneFont.ui(13, weight: .medium))
+                .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Nothing held yet. Capture a drop to get started.")
+        .accessibilityLabel("Nothing held yet. Use New Drop in the footer to capture.")
     }
 }
 

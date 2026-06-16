@@ -66,11 +66,6 @@ private struct DropInputBar: View {
     @State private var shellAppeared = false
     @FocusState private var captureFocused: Bool
 
-    private var leadingSymbol: String {
-        if justSaved { return "checkmark" }
-        return linkMode ? "link" : "square.and.pencil"
-    }
-
     private var shellOpacity: Double {
         if saving { return 0.85 }
         return shellAppeared ? 1 : 0
@@ -80,21 +75,27 @@ private struct DropInputBar: View {
         ZStack {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 12) {
-                    Image(systemName: leadingSymbol)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(
-                            justSaved
-                                ? AnyShapeStyle(CraneColor.accent)
-                                : AnyShapeStyle(Color.craneInkSecondary)
-                        )
-                        .shadow(
-                            color: justSaved ? CraneColor.accentGlow(for: colorScheme) : .clear,
-                            radius: justSaved ? 10 : 0
-                        )
-                        .symbolRenderingMode(.hierarchical)
-                        .frame(width: 22)
-                        .contentTransition(.symbolEffect(.replace))
-                        .symbolEffect(.bounce, value: justSaved)
+                    Group {
+                        if justSaved {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(CraneColor.accent)
+                        } else {
+                            CraneDropGlyph(
+                                dropType: linkMode ? .link : .thought,
+                                context: .capture,
+                                size: 18
+                            )
+                        }
+                    }
+                    .shadow(
+                        color: justSaved ? CraneColor.accentGlow(for: colorScheme) : .clear,
+                        radius: justSaved ? 10 : 0
+                    )
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(width: 22)
+                    .contentTransition(.symbolEffect(.replace))
+                    .symbolEffect(.bounce, value: justSaved)
 
                     CaptureMirrorField(
                         text: $text,

@@ -98,10 +98,7 @@ struct DropRow: View {
     @ViewBuilder
     private var activateButton: some View {
         let content = HStack(alignment: .top, spacing: 10) {
-            Image(systemName: drop.dropType == .link ? "link" : "square.and.pencil")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(drop.dropType == .link ? Color.craneLink : Color.craneThought)
-                .frame(width: DesignMetrics.iconColumnWidth)
+            CraneDropGlyph(dropType: drop.dropType, context: .list, size: 12)
                 .padding(.top, 3)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -239,13 +236,15 @@ struct DropRow: View {
         if drop.dropType == .link, onActivate == nil, let url = Drop.linkURL(for: drop.text) {
             Link(drop.text, destination: url)
                 .font(CraneFont.ui(14))
-                .foregroundStyle(Color.craneLink)
+                .foregroundStyle(CraneColor.accent)
+                .underline(true, color: CraneColor.accent)
                 .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         } else if drop.dropType == .link {
             Text(drop.text)
                 .font(CraneFont.ui(14))
-                .foregroundStyle(Color.craneLink)
+                .foregroundStyle(CraneColor.accent)
+                .underline(true, color: CraneColor.accent)
                 .lineLimit(bodyLineLimit)
                 .truncationMode(.tail)
         } else {

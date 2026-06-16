@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="crane logo direction E menu bar bird profile">
+  <path id="headBeak" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" d="M3.6 10.2 C2.9 7.4 4.2 4.6 6.8 3.6 C8.8 2.9 11 4.1 11.6 6.1 C12 7.3 11.1 8.5 9.6 9 C8.5 9.3 7.4 9.6 6.4 9.8"/>
+  <path id="neckHint" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" d="M5.8 9.9 L5.4 12.2"/>
+  <circle id="eye" cx="9.8" cy="4.9" r="1.15" fill="currentColor"/>
+</svg>

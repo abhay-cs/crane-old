@@ -35,8 +35,8 @@ enum DesignMetrics {
     static let rowCornerRadius: CGFloat = 8
     static let chipCornerRadius: CGFloat = 10
 
-    /// Icon column in list rows.
-    static let iconColumnWidth: CGFloat = 14
+    /// Icon column in list rows (arrow.up.forward needs a bit more room than 14pt).
+    static let iconColumnWidth: CGFloat = 16
     /// Navigate affordance column (chevron) in dashboard recent rows.
     static let navigateColumnWidth: CGFloat = 14
     /// Delete control column in list rows.
@@ -55,6 +55,8 @@ enum DesignMetrics {
     static let dashboardHeight: CGFloat = 580
     static let dashboardFooterHeight: CGFloat = 52
     static let dashboardSectionSpacing: CGFloat = 20
+    /// Activity sparkline + x-axis labels; tall enough for hover tooltips.
+    static let dashboardActivityChartHeight: CGFloat = 88
 
     static var dashboardScrollHeight: CGFloat {
         dashboardHeight - dashboardFooterHeight

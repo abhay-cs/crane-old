@@ -55,6 +55,8 @@ enum DesignMetrics {
     static let dashboardHeight: CGFloat = 580
     static let dashboardFooterHeight: CGFloat = 52
     static let dashboardSectionSpacing: CGFloat = 20
+    /// Activity sparkline + x-axis labels; tall enough for hover tooltips.
+    static let dashboardActivityChartHeight: CGFloat = 88
 
     static var dashboardScrollHeight: CGFloat {
         dashboardHeight - dashboardFooterHeight

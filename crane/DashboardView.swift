@@ -130,24 +130,20 @@ struct DashboardView: View {
     private var activitySection: some View {
         let breakdown = stats.typeBreakdown
         let hasTypeData = breakdown.thoughts + breakdown.links > 0
-        let hasActivityData = stats.totalCount > 0
-            && stats.dailyCounts.contains { $0.count > 0 }
+        let showActivityChart = stats.totalCount > 0
 
         return VStack(alignment: .leading, spacing: DesignMetrics.sm) {
             CraneSectionHeader(caps: "Activity", capsEmphasis: .neutral, trailing: "14 days")
 
             Group {
-                if hasActivityData {
+                if showActivityChart {
                     ActivityChart(points: stats.dailyCounts)
                 } else {
-                    ActivityEmptyState {
-                        DispatchQueue.main.async {
-                            AppDelegate.shared?.showOverlay()
-                        }
-                    }
+                    ActivityEmptyState()
+                        .clipped()
                 }
             }
-            .frame(height: 72)
+            .frame(height: DesignMetrics.dashboardActivityChartHeight)
 
             typeBreakdownSlot(hasTypeData: hasTypeData, breakdown: breakdown)
         }
@@ -195,11 +191,7 @@ struct DashboardView: View {
 
             let items = Array(recentDrops.prefix(2))
             if items.isEmpty {
-                RecentEmptyState {
-                    DispatchQueue.main.async {
-                        AppDelegate.shared?.showOverlay()
-                    }
-                }
+                RecentEmptyState()
             } else {
                 VStack(spacing: DesignMetrics.xs) {
                     ForEach(items) { drop in
@@ -407,6 +399,12 @@ private struct StatCard: View {
 
 // MARK: - Activity chart
 
+private enum ActivityChartMetrics {
+    static let tooltipHeight: CGFloat = 38
+    static let tooltipGap: CGFloat = 6
+    static let plotInset: CGFloat = 2
+}
+
 private struct ActivityChart: View {
     let points: [(date: Date, count: Int)]
 
@@ -481,11 +479,23 @@ private struct ActivityChart: View {
     @ViewBuilder
     private func chartTooltip(in plotFrame: CGRect, proxy: ChartProxy) -> some View {
         if let hoveredDay, let count = count(on: hoveredDay), count > 0,
-           let anchor = barTop(in: plotFrame, day: hoveredDay, count: count, proxy: proxy) {
+           let anchor = tooltipPosition(
+               in: plotFrame,
+               day: hoveredDay,
+               count: count,
+               proxy: proxy,
+               labelHeight: ActivityChartMetrics.tooltipHeight
+           ) {
             ChartDayTooltip(date: hoveredDay, count: count)
                 .position(anchor)
         } else if hoveredDay == nil, let todayCount = count(on: today), todayCount > 0,
-                  let anchor = barTop(in: plotFrame, day: today, count: todayCount, proxy: proxy) {
+                  let anchor = tooltipPosition(
+                      in: plotFrame,
+                      day: today,
+                      count: todayCount,
+                      proxy: proxy,
+                      labelHeight: 16
+                  ) {
             Text("\(todayCount)")
                 .font(CraneFont.mono(10, weight: .medium))
                 .foregroundStyle(CraneColor.accent)
@@ -502,10 +512,30 @@ private struct ActivityChart: View {
         hoveredDay = day
     }
 
-    private func barTop(in plotFrame: CGRect, day: Date, count: Int, proxy: ChartProxy) -> CGPoint? {
+    /// Positions a hover label fully inside the plot area, centered above the bar when possible.
+    private func tooltipPosition(
+        in plotFrame: CGRect,
+        day: Date,
+        count: Int,
+        proxy: ChartProxy,
+        labelHeight: CGFloat
+    ) -> CGPoint? {
         guard let x = proxy.position(forX: day),
-              let y = proxy.position(forY: count) else { return nil }
-        return CGPoint(x: plotFrame.origin.x + x, y: plotFrame.origin.y + y - 12)
+              let barTopY = proxy.position(forY: count) else { return nil }
+
+        let absoluteX = plotFrame.origin.x + x
+        let barTopAbsoluteY = plotFrame.origin.y + barTopY
+        let halfLabel = labelHeight / 2
+        let inset = ActivityChartMetrics.plotInset
+
+        let idealCenterY = barTopAbsoluteY
+            - ActivityChartMetrics.tooltipGap
+            - halfLabel
+        let minCenterY = plotFrame.minY + halfLabel + inset
+        let maxCenterY = plotFrame.maxY - halfLabel - inset
+        let centerY = min(max(idealCenterY, minCenterY), maxCenterY)
+
+        return CGPoint(x: absoluteX, y: centerY)
     }
 
     private func count(on day: Date) -> Int? {
@@ -569,65 +599,53 @@ private struct ChartDayTooltip: View {
 }
 
 private struct ActivityEmptyState: View {
-    let action: () -> Void
-
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
                 Image(systemName: "chart.bar")
-                    .font(.system(size: 18, weight: .light))
+                    .font(.system(size: 15, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
 
             Text("No activity yet")
-                .font(CraneFont.display(16))
-                .tracking(-0.15)
-                .foregroundStyle(Color.craneInk)
-
-            CranePrimaryButton(action: action) {
-                Text("Capture drop")
-            }
+                .font(CraneFont.ui(13, weight: .medium))
+                .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No activity yet. Use New Drop in the footer to capture.")
     }
 }
 
 private struct RecentEmptyState: View {
-    let action: () -> Void
-
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .fill(CraneColor.accentSoft(for: colorScheme))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 36, height: 36)
                 Image(systemName: "tray")
-                    .font(.system(size: 18, weight: .light))
+                    .font(.system(size: 15, weight: .light))
                     .foregroundStyle(Color.craneInkSecondary)
                     .symbolRenderingMode(.hierarchical)
             }
 
             Text("Nothing held yet.")
-                .font(CraneFont.display(16))
-                .tracking(-0.15)
-                .foregroundStyle(Color.craneInk)
-
-            CranePrimaryButton(action: action) {
-                Text("Capture drop")
-            }
+                .font(CraneFont.ui(13, weight: .medium))
+                .foregroundStyle(Color.craneInkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Nothing held yet. Capture a drop to get started.")
+        .accessibilityLabel("Nothing held yet. Use New Drop in the footer to capture.")
     }
 }
 

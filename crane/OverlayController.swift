@@ -125,6 +125,7 @@ final class OverlayController {
         panel.orderFrontRegardless()
         panel.makeKeyAndOrderFront(nil)
         panel.makeMain()
+        NotificationCenter.default.post(name: .craneOverlayDidShow, object: nil)
     }
 
     /// Show the history list, optionally scrolling to a specific drop.
@@ -153,6 +154,7 @@ final class OverlayController {
         capturedSourceApp = nil
         inputResetToken = UUID()
         panel.orderOut(nil)
+        NotificationCenter.default.post(name: .craneOverlayDidHide, object: nil)
     }
 
     /// Schedules `block` after a save animation unless superseded by show/hide.

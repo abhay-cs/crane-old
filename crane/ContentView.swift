@@ -209,6 +209,7 @@ private struct DropInputBar: View {
         }
 
         AIJobQueue.shared.enqueue(dropID: drop.id)
+        NotificationCenter.default.post(name: .craneDropDidSave, object: nil)
 
         saving = false
         justSaved = true

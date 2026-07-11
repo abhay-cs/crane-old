@@ -50,6 +50,10 @@ struct craneApp: App {
 
                 Divider()
 
+                Button("Welcome Tour") {
+                    AppDelegate.shared?.showWelcomeTour()
+                }
+
                 Button("Reset All Data…") {
                     AppDelegate.shared?.confirmAndResetAllData()
                 }

@@ -12,7 +12,7 @@ Living document for MVP / v1. Update status as work lands.
 | 🚫 Won't fix (v1) | Explicitly deferred |
 | 📋 Accepted | Known limitation, documented |
 
-**Last updated:** 2026-05-20
+**Last updated:** 2026-07-10
 
 ---
 
@@ -25,6 +25,7 @@ Living document for MVP / v1. Update status as work lands.
 | 2026-05-18 | **Must-fix pass:** `sourceApp` capture on open, post-save dismiss coalescing, single-instance guard, New Drop → `show()`, Esc in history → pill, `CraneSchemaV1` + migration plan, panel `visibleFrame` clamp |
 | 2026-05-20 | **Production polish pass:** ephemeral JSON safety, store archive recovery, idempotent JSON merge, wired `CraneMigrationPlan`, flock lock, wake hotkey re-register, AI queue/UX, capture limits, delete rollback, fetch caps, combined launch alert, CI, privacy manifest |
 | 2026-05-20 | **Re-audit fixes:** `DropStatistics` store-wide aggregates, `AITaggingCoordinator`, lock retry + alert, wake hotkey loss alert, history cap messaging, CI SDK gate |
+| 2026-07-10 | **First-run onboarding (P2-21):** event-driven coach card tour in `crane/Onboarding/`, overlay show/hide + drop-saved notifications, Capture → Welcome Tour replay, `CRANE_VERIFY_ONBOARDING` runtime checks + `scripts/test-onboarding.sh` |
 
 ---
 
@@ -86,7 +87,7 @@ Living document for MVP / v1. Update status as work lands.
 | P2-18 | Draft text survived panel-level Esc | ✅ Fixed | `inputResetToken` on hide |
 | P2-19 | Invalid link / save errors use blocking `NSAlert` | ⏳ Open | Prefer inline pill error for flow |
 | P2-20 | No launch at login | ⏳ Open | Expected for menu-bar MVP |
-| P2-21 | No first-run onboarding | ⏳ Open | Users must discover ⌘⇧Space |
+| P2-21 | No first-run onboarding | ✅ Fixed | First-launch coach card tour (`crane/Onboarding/`); advances as user performs each step; replay via Capture → Welcome Tour |
 | P2-22 | `REGISTER_APP_GROUPS` without group | ✅ Fixed | Set to `NO` in project |
 | P2-23 | Empty copyright in Info.plist | ✅ Fixed | Set in `project.pbxproj` |
 | P2-24 | Menu bar icon uses template SVG | 📋 Accepted | Verify light menu bar + increased contrast |

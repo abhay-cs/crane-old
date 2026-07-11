@@ -1,284 +1,396 @@
 <!doctype html>
-<html lang="en" data-theme="light">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
-    <title>crane — a holding pen for the thoughts you catch mid-flow</title>
-    <meta
-      name="description"
-      content="crane is a floating capture bar for macOS. ⌘⇧Space anywhere, type a thought, hit Enter. Total elapsed time: about two seconds."
-    />
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Crane — capture a thought in two seconds, entirely on your Mac</title>
+  <meta name="description" content="Crane is a native macOS capture bar. ⌘⇧Space anywhere, type, Enter — saved and auto-tagged by Apple's on-device Foundation Models. No cloud. Nothing leaves your Mac." />
+  <meta property="og:title" content="Crane for macOS" />
+  <meta property="og:description" content="Press a key. Type a thought. Back to work. On-device AI tagging — nothing leaves your Mac." />
+  <meta property="og:type" content="website" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
-      rel="stylesheet"
-    />
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="%232400FF"/><path fill="none" stroke="%23F7E6C8" stroke-width="32" stroke-linecap="round" d="M96 300q160-220 320 0"/><path fill="none" stroke="%23F7E6C8" stroke-width="28" stroke-linecap="round" d="M256 300v100"/><circle cx="256" cy="108" r="22" fill="%23F7E6C8"/></svg>' />
 
-    <link rel="stylesheet" href="styles.css?v=23" />
-    <link rel="icon" type="image/svg+xml" href="assets/app-icon.svg" />
-  </head>
-  <body>
-    <div class="grain" aria-hidden="true"></div>
-    <div class="wash wash--sage" aria-hidden="true"></div>
-    <div class="wash wash--ink" aria-hidden="true"></div>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
 
-    <header class="dock" aria-label="Primary">
-      <div class="frame frame--dock">
-        <div class="frame__body dock__row">
-          <a href="#top" class="mark" aria-label="crane home">
-            <img src="assets/app-icon.svg" alt="" width="26" height="26" decoding="async" />
-            <span class="mark__name">crane</span>
-          </a>
+  <style>
+    :root {
+      --paper: #fdfbf7;
+      --ink: #2c2419;
+      --ink-muted: rgba(44, 36, 25, 0.62);
+      --ink-faint: rgba(44, 36, 25, 0.38);
+      --line: rgba(44, 36, 25, 0.16);
+      --line-soft: rgba(44, 36, 25, 0.09);
+      --blue: #2400ff;
+      --blue-ink: #ffffff;
+      --recess: rgba(44, 36, 25, 0.045);
+      --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+      --sans: "Geist", -apple-system, system-ui, sans-serif;
+      --mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #14110e;
+        --ink: #f4ede3;
+        --ink-muted: rgba(244, 237, 227, 0.64);
+        --ink-faint: rgba(244, 237, 227, 0.4);
+        --line: rgba(244, 237, 227, 0.18);
+        --line-soft: rgba(244, 237, 227, 0.1);
+        --blue: #4d33ff;
+        --recess: rgba(244, 237, 227, 0.05);
+      }
+    }
 
-          <nav class="dock__nav" aria-label="Sections">
-            <a href="#idea">Idea</a>
-            <a href="#flow">Demo</a>
-            <a href="#keys">Shortcuts</a>
-          </nav>
+    * { box-sizing: border-box; margin: 0; }
+    html { -webkit-font-smoothing: antialiased; text-size-adjust: 100%; }
+    body {
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    a { color: inherit; }
+    img, svg { display: block; }
 
-          <div class="dock__end">
-            <button class="lamp" type="button" aria-label="Toggle color theme" data-theme-toggle>
-              <svg class="lamp__moon" viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">
-                <path d="M16.5 12.8a7 7 0 01-9.3-9.3.5.5 0 00-.7-.6 8 8 0 1010.6 10.6.5.5 0 00-.6-.7z" fill="currentColor" />
-              </svg>
-              <svg class="lamp__sun" viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">
-                <circle cx="10" cy="10" r="3.4" fill="currentColor" />
-                <g stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-                  <line x1="10" y1="2.5" x2="10" y2="4.5" />
-                  <line x1="10" y1="15.5" x2="10" y2="17.5" />
-                  <line x1="2.5" y1="10" x2="4.5" y2="10" />
-                  <line x1="15.5" y1="10" x2="17.5" y2="10" />
-                </g>
-              </svg>
-            </button>
-            <a class="pill pill--quiet" href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener">Source</a>
-            <a class="pill pill--ink pill--group" href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener">
-              <span>Build</span>
-              <span class="pill__orbit" aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="11" height="11"><path d="M4 12V4h8M4 4l8 8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
-              </span>
-            </a>
-            <button class="burger" type="button" aria-label="Open menu" aria-expanded="false" data-nav-toggle>
-              <i></i><i></i>
-            </button>
-          </div>
+    .shell {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 0;
+    }
+    .mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-right: auto;
+      text-decoration: none;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+    .nav a.quiet {
+      font-size: 14px;
+      color: var(--ink-muted);
+      text-decoration: none;
+    }
+    .nav a.quiet:hover { color: var(--ink); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--blue);
+      color: var(--blue-ink);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border: 1px solid var(--blue);
+    }
+    .btn:hover { filter: brightness(1.12); }
+    .btn--lg { font-size: 15px; padding: 12px 22px; }
+
+    /* ── Hero ───────────────────────────────── */
+    .hero {
+      padding: 88px 0 64px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 28px;
+    }
+    h1 {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: clamp(44px, 7vw, 76px);
+      line-height: 1.06;
+      letter-spacing: -0.015em;
+    }
+    h1 span { display: block; }
+    h1 em, h2 em {
+      font-style: italic;
+      color: var(--blue);
+    }
+    .lede {
+      margin-top: 28px;
+      max-width: 58ch;
+      font-size: 18px;
+      color: var(--ink-muted);
+    }
+    .lede strong { color: var(--ink); font-weight: 500; }
+    kbd {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      padding: 1px 6px;
+      border: 1px solid var(--line);
+      background: var(--recess);
+      white-space: nowrap;
+    }
+    .cta {
+      margin-top: 36px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      flex-wrap: wrap;
+    }
+    .cta .alt {
+      font-size: 14px;
+      color: var(--ink-muted);
+    }
+    .fine {
+      margin-top: 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--ink-faint);
+    }
+
+    /* ── Capture bar mock ───────────────────── */
+    .stage {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .mock {
+      border: 1px solid var(--line);
+      background: var(--recess);
+      padding: clamp(28px, 6vw, 72px) clamp(16px, 5vw, 64px);
+    }
+    .pill {
+      max-width: 560px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px; /* the app’s panel is rounded; depict it truthfully */
+      box-shadow: 0 18px 44px -22px rgba(0, 0, 0, 0.35);
+      padding: 16px 20px;
+    }
+    .pill .glyph { color: var(--ink-faint); flex: none; }
+    .pill .text {
+      font-family: var(--serif);
+      font-size: clamp(19px, 3vw, 24px);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .caret {
+      display: inline-block;
+      width: 2px;
+      height: 1.05em;
+      vertical-align: text-bottom;
+      margin-left: 2px;
+      background: var(--blue);
+      animation: blink 1.1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+    .pill .hints {
+      margin-left: auto;
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--ink-faint);
+      white-space: nowrap;
+    }
+    @media (max-width: 560px) { .pill .hints { display: none; } }
+
+    .steps {
+      max-width: 560px;
+      margin: 28px auto 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+    .steps b { color: var(--ink-faint); font-weight: 400; margin-right: 6px; }
+    @media (max-width: 560px) { .steps { flex-direction: column; gap: 8px; } }
+
+    /* ── On-device section ──────────────────── */
+    .local { padding: 72px 0; border-bottom: 1px solid var(--line); }
+    h2 {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: clamp(32px, 4.5vw, 46px);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      max-width: 24ch;
+    }
+    .local .sub {
+      margin-top: 16px;
+      max-width: 56ch;
+      color: var(--ink-muted);
+    }
+    .cols {
+      margin-top: 48px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--line);
+    }
+    .cols > div { padding: 28px 26px; }
+    .cols > div + div { border-left: 1px solid var(--line); }
+    @media (max-width: 760px) {
+      .cols { grid-template-columns: 1fr; }
+      .cols > div + div { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    .cols h3 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .cols p {
+      margin-top: 10px;
+      font-size: 14.5px;
+      color: var(--ink-muted);
+    }
+    .cols code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--recess);
+      border: 1px solid var(--line-soft);
+      padding: 1px 5px;
+      word-break: break-all;
+    }
+
+    /* ── Footer ─────────────────────────────── */
+    footer { padding: 40px 0 56px; }
+    .foot {
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 13.5px;
+      color: var(--ink-muted);
+    }
+    .foot strong { color: var(--ink); font-weight: 500; }
+    .foot a { color: var(--ink-muted); }
+    .foot a:hover { color: var(--ink); }
+    .foot .spacer { margin-left: auto; color: var(--ink-faint); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="shell nav">
+      <a class="mark" href="#">
+        <svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" rx="112" fill="#2400FF" />
+          <path fill="none" stroke="#F7E6C8" stroke-width="32" stroke-linecap="round" d="M96 300q160-220 320 0" />
+          <path fill="none" stroke="#F7E6C8" stroke-width="28" stroke-linecap="round" d="M256 300v100" />
+          <circle cx="256" cy="108" r="22" fill="#F7E6C8" />
+        </svg>
+        crane
+      </a>
+      <a class="quiet" href="https://github.com/abhay-cs/crane">GitHub</a>
+      <a class="btn" href="https://github.com/abhay-cs/crane/releases/latest/download/Crane.dmg">Download</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="shell">
+      <p class="eyebrow">Native macOS · Free &amp; open source</p>
+      <h1>
+        <span>Press a key.</span>
+        <span>Type the thought.</span>
+        <span><em>Back to work.</em></span>
+      </h1>
+      <p class="lede">
+        Crane is a capture bar for macOS. Hit <kbd>⌘⇧Space</kbd> anywhere, type, press <kbd>↵</kbd> —
+        about two seconds, and you never left your editor. Every entry is tagged as it lands by
+        <strong>Apple’s Foundation Models, running entirely on your Mac</strong>. No cloud, no account,
+        nothing leaves the machine.
+      </p>
+      <div class="cta">
+        <a class="btn btn--lg" href="https://github.com/abhay-cs/crane/releases/latest/download/Crane.dmg">Download Crane&nbsp;·&nbsp;.dmg</a>
+        <a class="alt" href="https://github.com/abhay-cs/crane#run-it">or build from source →</a>
+      </div>
+      <p class="fine">macOS 26 (Tahoe) or later · Apple silicon · Apple Intelligence for auto-tagging</p>
+    </div>
+  </section>
+
+  <section class="stage" aria-label="What Crane looks like">
+    <div class="shell">
+      <div class="mock">
+        <div class="pill" role="img" aria-label="Crane’s floating capture bar with a half-typed thought">
+          <span class="glyph" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="17" height="17"><path d="M14.5 2.5l3 3-9.5 9.5-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.3" fill="none" /></svg>
+          </span>
+          <span class="text">email maya about friday<span class="caret"></span></span>
+          <span class="hints" aria-hidden="true">
+            <span><kbd>↵</kbd> save</span>
+            <span><kbd>⌘L</kbd> link</span>
+          </span>
+        </div>
+        <div class="steps" aria-hidden="true">
+          <span><b>01</b><kbd>⌘⇧Space</kbd> anywhere</span>
+          <span><b>02</b> type the thought</span>
+          <span><b>03</b><kbd>↵</kbd> saved &amp; tagged</span>
         </div>
       </div>
-    </header>
-
-    <div class="sheet" aria-hidden="true" data-nav-overlay>
-      <nav class="sheet__nav">
-        <a href="#idea" style="--i: 0">Idea</a>
-        <a href="#flow" style="--i: 1">Demo</a>
-        <a href="#keys" style="--i: 2">Shortcuts</a>
-        <a href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener" style="--i: 3">Source</a>
-        <a href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener" style="--i: 4">Build</a>
-      </nav>
     </div>
+  </section>
 
-    <main id="top">
-      <section class="poster">
-        <div class="poster__rail enter">
-          <span class="tag tag--blue">Crane 1.0 · macOS</span>
-        </div>
-
-        <h1 class="poster__head enter" data-delay="60">
-          <span class="poster__line">Don&rsquo;t switch apps</span>
-          <span class="poster__line poster__line--accent">for a sentence in your head.</span>
-        </h1>
-
-        <div class="poster__grid enter" data-delay="140">
-          <p class="poster__lede">
-            <kbd>⌘</kbd><kbd>⇧</kbd><kbd>Space</kbd>, type, <kbd>↵</kbd> — back in your editor in about two seconds.
+  <section class="local">
+    <div class="shell">
+      <h2>Nothing leaves your Mac. <em>Not even for the AI.</em></h2>
+      <p class="sub">
+        Most “smart” capture tools ship your half-formed thoughts to someone else’s server.
+        Crane doesn’t have a server.
+      </p>
+      <div class="cols">
+        <div>
+          <h3>On-device intelligence</h3>
+          <p>
+            Tagging runs on Apple’s Foundation Models — the system models behind Apple Intelligence,
+            executing on your Mac’s own silicon. No API key, no account, no quota, works offline.
           </p>
-          <div class="poster__cta">
-            <a class="pill pill--ink pill--lg pill--group" href="https://github.com/abhay-cs/crane#install--run" target="_blank" rel="noopener" id="download">
-              <span>Build from source</span>
-              <span class="pill__orbit" aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="12" height="12"><path d="M4 12V4h8M4 4l8 8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
-              </span>
-            </a>
-            <a class="pill pill--paper pill--lg pill--group" href="#flow">
-              <span>Watch the flow</span>
-              <span class="pill__orbit" aria-hidden="true">
-                <svg viewBox="0 0 16 16" width="12" height="12"><path d="M5 3v10l8-5-8-5z" fill="currentColor"/></svg>
-              </span>
-            </a>
-          </div>
-          <ul class="poster__facts">
-            <li><strong>2s</strong> to capture</li>
-            <li>No Dock · no Cmd-Tab</li>
-          </ul>
         </div>
-
-        <div class="stack stack--hero enter" data-delay="280">
-          <div class="stack__layer stack__layer--back" aria-hidden="true"></div>
-          <div class="stack__layer stack__layer--main">
-            <div class="frame frame--stage">
-              <div class="frame__body">
-                <div class="stage" id="flow">
-                  <div class="win" role="img" aria-label="crane capture pill over Xcode">
-                    <div class="win__chrome">
-                      <span class="win__dot win__dot--r"></span>
-                      <span class="win__dot win__dot--y"></span>
-                      <span class="win__dot win__dot--g"></span>
-                      <span class="win__path">ContentView.swift — Xcode 26</span>
-                    </div>
-                    <div class="win__canvas">
-                      <pre class="win__code" aria-hidden="true"><code><span class="c">// out of the way.</span>
-<span class="k">struct</span> <span class="t">DropInputBar</span>: <span class="t">View</span> {
-  <span class="k">var</span> body: <span class="k">some</span> <span class="t">View</span> {
-    <span class="t">TextField</span>(<span class="s">"Drop your thought…"</span>, text: $text)
-      .onSubmit { save() }
-  }
-}</code></pre>
-                      <div class="win__float">
-                        <div class="capture" id="capturePill" data-state="capture">
-                          <span class="capture__glyph">
-                            <svg class="capture__ico capture__ico--pen" viewBox="0 0 20 20" width="18" height="18"><path d="M14.5 2.5l3 3-9.5 9.5-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
-                            <svg class="capture__ico capture__ico--link" viewBox="0 0 20 20" width="18" height="18"><path d="M8 12l4-4M6 14a3 3 0 010-4l2-2M14 6a3 3 0 010 4l-2 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
-                            <svg class="capture__ico capture__ico--ok" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
-                          </span>
-                          <span class="capture__line" id="pillText"><span class="capture__caret"></span></span>
-                          <span class="capture__flag" id="pillLinkBadge">LINK</span>
-                          <span class="capture__keys">
-                            <span><kbd>↵</kbd> save</span>
-                            <span><kbd>⌘L</kbd> link</span>
-                            <span><kbd>⌘H</kbd> history</span>
-                          </span>
-                        </div>
-                        <div class="archive" id="historyCard">
-                          <div class="archive__top">
-                            <button class="archive__back" type="button" aria-label="Back"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M10 4L6 8l4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></button>
-                            <span class="archive__find">Search drops</span>
-                            <span class="archive__n">14 drops</span>
-                          </div>
-                          <ul class="archive__rows">
-                            <li><span>✎</span><span>Email Maya about Friday — try the late slot</span><time>now</time></li>
-                            <li class="is-url"><span>↗</span><span>linear.app/issue/CRN-204</span><time>2m</time></li>
-                            <li><span>✎</span><span>Tag system for crane — mlx locally?</span><time>11m</time></li>
-                            <li><span>✎</span><span>Borderless NSPanel notes from Jay</span><time>38m</time></li>
-                            <li class="is-url"><span>↗</span><span>developer.apple.com/.../liquid-glass</span><time>1h</time></li>
-                            <li><span>✎</span><span>Re-read typography before Monday</span><time>2h</time></li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="win__bar" aria-hidden="true">
-                      <span>Xcode</span><span>File</span><span>Edit</span><span class="win__gap"></span>
-                      <span class="win__crane">crane</span><span>9:41</span>
-                    </div>
-                  </div>
-                  <div class="stage__tabs" role="tablist" aria-label="Preview state">
-                    <button data-pill-state="capture" class="tab is-on" type="button" role="tab"><i></i>Capture</button>
-                    <button data-pill-state="link" class="tab" type="button" role="tab"><i></i>Link</button>
-                    <button data-pill-state="saved" class="tab" type="button" role="tab"><i></i>Saved</button>
-                    <button data-pill-state="history" class="tab" type="button" role="tab"><i></i>History</button>
-                    <button class="tab tab--dim" type="button" data-pill-replay>Replay</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div>
+          <h3>Local by architecture</h3>
+          <p>
+            Crane makes zero network requests. Your notes live in one local file —
+            <code>~/Library/Application Support/com.abhaycs.crane</code> — yours to back up,
+            inspect, or delete.
+          </p>
         </div>
-      </section>
-
-      <section class="spread section" id="idea">
-        <p class="tag enter">The idea</p>
-        <h2 class="spread__h enter" data-delay="60">
-          A holding pen<span class="muted">,</span> <span class="em">not a notes app.</span>
-        </h2>
-        <p class="spread__lede enter" data-delay="120">
-          Catch the thought without leaving your app. Skim the list later — act on it or discard.
-        </p>
-      </section>
-
-      <section class="keys section" id="keys">
-        <header class="keys__head enter">
-          <p class="tag tag--blue">Shortcuts</p>
-          <h2>Eight chords.</h2>
-        </header>
-        <div class="frame enter" data-delay="80">
-          <table class="frame__body keys__table">
-            <thead>
-              <tr><th scope="col">Where</th><th scope="col">Combo</th><th scope="col">Action</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Anywhere</td><td><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Space</kbd></td><td>Toggle capture pill</td></tr>
-              <tr><td>Capture</td><td><kbd>↵</kbd></td><td>Save & dismiss</td></tr>
-              <tr><td>Capture</td><td><kbd>⌘</kbd><kbd>L</kbd></td><td>Link mode</td></tr>
-              <tr><td>Capture</td><td><kbd>⌘</kbd><kbd>H</kbd></td><td>History</td></tr>
-              <tr><td>Capture</td><td><kbd>Esc</kbd></td><td>Dismiss</td></tr>
-              <tr><td>History</td><td><kbd>⌫</kbd></td><td>Delete row</td></tr>
-              <tr><td>History</td><td><kbd>Esc</kbd></td><td>Back to capture</td></tr>
-              <tr><td>Menu bar</td><td><kbd>⌘</kbd><kbd>Q</kbd></td><td>Quit</td></tr>
-            </tbody>
-          </table>
+        <div>
+          <h3>Native, not wrapped</h3>
+          <p>
+            Swift and SwiftUI, a real menu-bar app — no Electron, no Dock icon, no telemetry.
+            It waits quietly until you press the key.
+          </p>
         </div>
-      </section>
+      </div>
+    </div>
+  </section>
 
-      <section class="folio section" id="dash">
-        <p class="folio__caption enter">Menu-bar dashboard — same drops as the pill.</p>
-        <div class="stack stack--folio enter" data-delay="80">
-          <div class="stack__layer stack__layer--folio">
-            <div class="frame">
-              <div class="frame__body panel" aria-label="Dashboard preview">
-                <div class="panel__top"><span class="panel__brand">Crane</span><span class="panel__meta">menu bar</span></div>
-                <div class="panel__stats">
-                  <div><span>TOTAL</span><strong>412</strong></div>
-                  <div><span>TODAY</span><strong>8</strong></div>
-                  <div><span>STREAK</span><strong>23<small>d</small></strong></div>
-                </div>
-                <div class="panel__block">
-                  <div class="panel__row"><span>Activity</span><span>14 days</span></div>
-                  <div class="spark">
-                    <i style="--h:18%"></i><i style="--h:38%"></i><i style="--h:22%"></i><i style="--h:64%"></i>
-                    <i style="--h:48%"></i><i style="--h:80%"></i><i style="--h:56%"></i><i style="--h:33%"></i>
-                    <i style="--h:70%"></i><i style="--h:92%"></i><i style="--h:60%"></i><i style="--h:44%"></i>
-                    <i style="--h:78%"></i><i style="--h:100%"></i>
-                  </div>
-                </div>
-                <div class="panel__block">
-                  <div class="panel__row"><span>Type</span></div>
-                  <div class="split">
-                    <span style="--w:68%">thoughts <b>280</b></span>
-                    <span class="split__links" style="--w:32%">links <b>132</b></span>
-                  </div>
-                </div>
-                <div class="panel__block">
-                  <div class="panel__row"><span>Recent</span><span>3 / 412</span></div>
-                  <ul class="panel__drops">
-                    <li><span>✎</span><span>Email Maya about Friday</span><time>now</time></li>
-                    <li class="is-url"><span>↗</span><span>linear.app/CRN-204</span><time>2m</time></li>
-                    <li><span>✎</span><span>Tag system (mlx)</span><time>11m</time></li>
-                  </ul>
-                </div>
-                <footer class="panel__foot"><span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Space</kbd></span><span><kbd>⌘</kbd><kbd>Q</kbd> quit</span></footer>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  <footer>
+    <div class="shell foot">
+      <span><strong>crane</strong> — a holding pen for thoughts you catch mid-flow.</span>
+      <a href="https://github.com/abhay-cs/crane">Source</a>
+      <a href="https://github.com/abhay-cs/crane/issues">Issues</a>
+      <span class="spacer">© 2026 Abhay Sharma</span>
+    </div>
+  </footer>
 
-      <footer class="tail">
-        <div class="tail__brand">
-          <img src="assets/app-icon.svg" alt="" width="32" height="32" decoding="async" />
-          <div>
-            <strong>crane</strong>
-            <p>A holding pen for thoughts you catch mid-flow.</p>
-          </div>
-        </div>
-        <nav class="tail__nav">
-          <div><span>Product</span><a href="#flow">Demo</a><a href="#keys">Shortcuts</a></div>
-          <div><span>Open</span><a href="https://github.com/abhay-cs/crane" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/abhay-cs/crane/issues" target="_blank" rel="noopener">Issues</a></div>
-        </nav>
-        <p class="tail__fine">© 2026 · Open source · Winnipeg</p>
-      </footer>
-    </main>
-
-    <script src="app.js?v=7" defer></script>
-  </body>
+</body>
 </html>
